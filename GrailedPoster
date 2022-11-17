@@ -1,0 +1,172 @@
+from msilib.schema import Condition
+from tokenize import Name
+from turtle import color
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+import time
+
+driver = webdriver.Chrome("D:/chromedriver.exe")
+driver.get("https://www.grailed.com/sell")
+time.sleep(2)
+
+short_sleeve = "Short Sleeve T-Shirts"
+def sub_category(item):
+    sub_category_option = item
+    sub_category_lists = driver.find_elements('xpath', ".//*[@class='CustomDropDown-module__dropDownItems___7n7Mi']/span")
+    i = 0
+    for x in sub_category_lists:
+        if x.text == sub_category_option:
+            driver.find_element('xpath', ".//*[@class='CustomDropDown-module__dropDownItems___7n7Mi']/span[" + str(i + 1) + "]").click()
+            break
+        i += 1 
+clothes_designer = "Disney"
+def designer_field(designer):
+    option_to_select = designer  # change the option you want to select
+    designer_txt_field = driver.find_element('xpath', '//*[@id="designer-autocomplete"]')
+    designer_txt_field.click()
+    designer_txt_field.send_keys("Ad")  # you have to enter some character to search and select the value of the string 'option_to_select'
+    time.sleep(1)
+
+    option_list = driver.find_elements('css selector', ".Designer-module__autocomplete___fCmzc li")
+    time.sleep(1)
+
+    i = 0
+    for x in option_list:
+        if x.text == option_to_select:
+            driver.find_element('xpath', ".//*[@class='Designer-module__autocomplete___fCmzc']/li[" + str(i + 1) + "]").click()
+            break
+        i += 1
+
+clothing_size = 'US XXL / EU 58 / 5'
+def choosing_size(size):
+    option_to_select = size  # change the option you want to select
+    designer_txt_field = driver.find_element('xpath', '//*[@id="designer-autocomplete"]')
+    designer_txt_field.click()
+    designer_txt_field.send_keys("Ad")  # you have to enter some character to search and select the value of the string 'option_to_select'
+    time.sleep(1)
+
+    option_list = driver.find_elements('css selector', ".Designer-module__autocomplete___fCmzc li")
+    time.sleep(1)
+
+    i = 0
+    for x in option_list:
+        if x.text == option_to_select:
+            driver.find_element('xpath', ".//*[@class='SizeSelect-module__selectMenu___egH5d']/li[" + str(i + 1) + "]").click()
+            break
+        i += 1
+
+description = 'poop'
+def item_name(name):
+    driver.find_element('xpath', '//*[@id="SellForm"]/div/div[2]/form/div[2]/input').send_keys(name)
+
+color_of_item = 'poop color'
+def item_color(color):
+    driver.find_element('xpath', '//*[@id="color-autocomplete"]').send_keys(color)
+
+item_description = 'idk just buy it'
+def add_description(desc):
+    driver.find_element('xpath', '//*[@id="SellForm"]/div/div[2]/form/div[5]/textarea').send_keys(desc)
+
+item_tags = '#Vintage #old #nascar'
+def adding_tags(tags):
+    driver.find_element('xpath', '//*[@id="SellForm"]/div/div[2]/form/div[7]/div[2]/ul/li/input').send_keys(tags)
+
+item_price = '25'
+def add_price(price):
+    driver.find_element('xpath', '//*[@id="SellForm"]/div/div[2]/form/div[8]/div[2]/div[1]/div[1]/label/input').send_keys(price)
+
+def ship_switch():
+    driver.find_element('xpath', '//*[@id="SellForm"]/div/div[2]/form/div[9]/div[3]/div[1]/button[2]/span').click()
+
+def smart_price_activation():
+    driver.find_element('xpath','//*[@id="SellForm"]/div/div[2]/form/div[8]/div[2]/div[1]/div[2]/label/span[2]').click()
+
+
+def shipping_price():
+    driver.find_element('xpath', '//*[@id="MyOwnShippingOptionWrapper"]').send_keys('5')
+
+def option1():
+    driver.find_element('xpath', '//*[@id="app"]/div[7]/div/div/div/div[2]/div/div/p[2]/a').click()
+    time.sleep(2)
+    driver.find_element('xpath', '//*[@id="app"]/div[7]/div/div/div/div[2]/div/div/button[4]').click()
+    google_email = driver.find_element('xpath', '//*[@id="email"]')
+    google_email.send_keys("argelarroyo2001@gmail.com")
+    driver.find_element('xpath', '//*[@id="password"]').send_keys('Pineappleguy305')
+    time.sleep(1)
+    driver.find_element('xpath', '//*[@id="app"]/div[7]/div/div/div/div[2]/div/div/form/button').click()
+    time.sleep(5)
+
+    title = driver.find_element('css selector', ".SellFormHeader-Title")
+    driver.execute_script("arguments[0].scrollIntoView(true)",title)
+
+    driver.find_element('xpath', '//*[@id="SellForm"]/div/div[2]/form/div[1]/div/div[1]/div[1]/div/input').click()
+    time.sleep(2)
+    #Start of entering clothing details
+    #picking type of clothing, men or woman
+    driver.find_element('xpath', '//*[@id="SellForm"]/div/div[2]/form/div[1]/div/div[1]/div[1]/div/div/span[1]').click()
+    time.sleep(2)
+    #selects the main category
+    driver.find_element('xpath', '//*[@id="SellForm"]/div/div[2]/form/div[1]/div/div[1]/div[1]/div/div/span[2]').click()
+    time.sleep(2)
+
+    # Sub-category field
+    sub_category(short_sleeve)
+
+    # Designer field
+    designer_field(clothes_designer)
+
+    # Size field
+    # choosing_size(clothing_size)
+
+    # Item Name
+    item_name(description)
+
+    # Item Color
+    item_color(color_of_item)
+
+    #Item description
+    add_description(item_description)
+
+    #adding tag
+    adding_tags(item_tags)
+
+    # Adding Price
+    add_price(item_price)
+
+    #turning off smart price
+    smart_price_activation()
+
+    # Switch to my own shipping
+    ship_switch()
+
+    #change shipping price
+    shipping_price()
+
+option1()
+
+# 
+
+#How would I create posts?
+#use the parsing text I created already?
+#yeah most likely, no use just making like separate modules for each category, size, etc,
+#I just need to make a script for shirts,sweatshirts etc
+# , then if else for the size,
+# enter Item Name
+# Item color
+# Item Condition
+# description
+# general tags for all,
+# click my own shipping,
+# then add photos from gmail, 
+# create new draft
+# then boom done.
+# if this works smoothly, I can probably just do this for the depop as well, fuck the bulk listing if size is going to be a bitch about it, I still have the layout and everything, I just have to figure how to bypass the account login info
+# I need to learn how to function through files, to create a big file of all the pics in order, groups of 4#
+
+#so all this is basically complete now, need to gather the images from gmail into a folder, in order,
+#and adjust the size and condition option
+#these would be newly created from just based off pics, so maybe I could create a csv to put them all in and create big titles wih the above layout
+#Then from there need to figure out the depop problem how google sheets isnt reading from the dropdown menu.  SO that is super weird because it should be working
+
+
+
