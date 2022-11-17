@@ -1,0 +1,769 @@
+# import csv
+# from errno import EBADMACHO
+# from genericpath import samefile
+# from json import tool
+# from msilib.schema import tables
+# from operator import index
+# from optparse import TitledHelpFormatter
+# from os import sched_getscheduler
+# from ssl import DefaultVerifyPaths
+# from asyncio import MultiLoopChildWatcher
+from json import tool
+from multiprocessing.util import ForkAwareThreadLock
+from platform import platform
+from sqlite3 import complete_statement
+from ssl import OP_NO_COMPRESSION
+import this
+from timeit import repeat
+from tkinter import W
+from tkinter.colorchooser import Chooser
+from typing import OrderedDict
+from zipapp import create_archive
+import nltk
+# from nltk.corpus import stopwords
+import re
+import pandas as pd
+import json
+from googleapiclient.discovery import build
+from google.oauth2 import service_account
+
+# path = '/Users/Argel Arroyo/Desktop/Selenium_python/depop-bulk-lister.json'
+# gc = pygsheets.authorize(service_file=path)
+# sheet_title = "1CmQ2IPQ1VIfkIbA_iEk7bPcSYgiBRrJYiKlfietOZ88"
+global size_of_item
+titles_and_brands = []
+titles_no_brands = []
+general_description = "PLEASE READ CAREFULLY!! Some items may have unlisted markings, but for the most part all marking would be listed. These clothes are often old and used, so tend to not be in pristine condition. Most items that are listed here will by default be new, unless stated otherwise. Items have not been washed so we also highly recommend that you wash before putting it on.  All items have been handpicked by us. Thank you for choosing to support as at RealVintage._ and if there is anything we can do to make your experience better feel free to send us a message! We also give large discounts if purchasing stuff in bulk."
+
+updated_title_list_lower = ['49er logo 7 xl vintage 35', "80's snowbird shirt large", '2003 korn deadstock take a look in the mirror 25 xl and xxl', '2003 nascar chase tony stewart home depot large 20', '2005 white sox world champions xl distressed 35', '2006 diabetes l', '2006 men frozen four hockey college xl', '2006 wisconsin hockey xl', '2008 nascar chase camo earnhardt shirt xl', '2009 pantera deadstock l 25', '2016 championship cubs m world series mlb', 'acme wiley coyote 2xl', 'adidas nutrition facts l', 'adidas rose bowl football m', 'adventure time l', 'adventure time large', 'aerosmith 2002 deadstock medium 25', 'alice cooper 2009 tour ds xl 25', 'american mickey l vintage', 'art shirt one size fits all xl', 'artistic lion m', 'aztec l', 'back to the future retro large', 'basketball tournament xl', 'bass pro shop medium', 'bead necklace shirt l w/ krewe of cheeseheads', 'bellspout racing m nascar', 'big dog large embroidered', 'black label society xl deadstock 25 ', 'blue nike shirt large', 'bob ross 2xl', 'bob ross 2xl piece', 'boba fett xl 2010', 'boilers purdue logo athletic m', 'bon jovi because we can tour 2013 xl', 'boyz n the hood 4x', 'breaking bank large', 'buck hunting l made in usa single stitch', 'bucket of blood s', 'chi chi get the yayo xl', 'chicago cubs lee sports xl w/ stainage', 'clemson medium college shirt', 'cloud 9 tiger xl', 'columbia green l', 'coors light 2xl slight paint stainage on front', 'dale earnhart jr 2006 nascar 2xl boxy fit', 'dale jr green xl', 'danzig legacy 2011 deadstock xl 25', 'darth tater xl', 'daytona usaa racing xl', 'disney magic kingdom medium', 'disney mickey bowlorama xl', 'disturbed 2006 tour 2xl deadstock', 'dodgers l', 'donald duck disney nyc xl', 'dragon racing fuel m', 'drink moxie 2xl', 'dylan mccarthy racing m', 'effortless m', 'fast and furious retro medium', 'fight or die xl', 'fnaf pizza cartoon large', 'full throttle biker bar medium', 'full throttle m', 'future forward xl shirt', 'g3 sports 2xl boston bruins', 'geek squad xl', 'geometrical tree large', 'glamis sand dune l shirt', 'gm card shirt xl', 'green day m 2009', 'griswold christmad red xl', 'guess green large stripe', 'guns n roses 2009 super slim long fit 2x 25', 'hard rock cafe brown 2xl', 'hard rock canada', 'harley punta cana xl tank top', 'holley ls fest small 2018', 'honor the firekeepers xl vintage sleeveles w/ stain', 'horseradish festival shirt m', 'i came i sawed i fixed xxl vintage', 'i triple dog dare you xl a christmas story', 'its safe to talk about my safety wisconsin medium vintage', 'jack daniels xl', 'jansport mediun fly gear', 'jimmie johnson winner circle xl and xxl', 'jimmy buffet 2007 medium', 'jimmy johnsons xl 48', 'jordan xxl red tree', 'junior leader yellow eagle xl', 'kaleb racing medium shirt', 'kenseth 2x', 'kobe bryant muppet l', 'korea vet 2xl', 'korn 2xl deadstock graffiti shirt y2k 25', 'korn 2009 bitch we have a problem tour 2x deadstock 30', 'korn madcatt bundle 3x 2x', 'kyke busch joe gibbs racing nascar 2xl 10', 'lawrence university xl shirt', "led zeppelin 2000's ds small 25", 'led zeppelin retro l', 'lime green pepsi shirt m', 'maddcatt xxxl martial arts shirts', 'matt kenseth nascar 2xl', 'mb baseball xl', 'mbna baseball xl', 'michelin bike racing xl', 'millennium falcon large retro old navy star wars tour shirt large', 'miller lite large', 'monopoly make it rain m', 'mossy oak xl', 'mountain medium with flaw', 'mustang m sonoma', 'nascar 2006 carl edwards xxl', 'nascar 2007 daytona triple header 3xl', 'nascar bubba wallace petty racing l', 'nascar jimmy johnson 2x 13', 'nascar junkie m winner circle', 'nascar winner circle xl johnson 48', 'new york donald duck xl', 'nickelodeon l', 'nike 1-72 2xl', 'nike blue xl', 'nike youth xl mens small', 'nile river medium', 'nissan 350z l', 'nonpoint band giant tag xl ds 25', 'nuno bettencourt band shirt size medium front and back 30', 'ohio state buckeyes xl', 'oktoberfest m', 'one piece straw hat crew m', 'oregon state football xxl nike #21', 'packers liquid blue style large 12', 'packers logo 7 xl 10', 'packers nfc nfl xl', 'peace love beaver shirt l', 'pink floyd dark side of moon l 2013 25', 'pirates of the caribbean medium disney 40', 'planet hollywood small 1991', 'primal scream deadstock xl', 'puddle of mudd m xl #1 30 ', 'puerto vallarta large', 'quicksilver xl', 'racing jimy owens l', 'realtree duck hunting shirt xl', 'rob zombie 2006 xl ds 30', 'rob zombie 2012 xl ds 30', 'rob zombie live deadstock xl 30', 'rock paper scissor large', 'rose bowl wisconsine embroidery 2000 xl', 'sandlot l', 'schrader small racing shirt', 'scorpions large deadstock humanity hour  20', 'seattle summit m', 'sepultra large band shirt 90', 'sf giants construction shirt xl', 'shoe box xl russel', 'shut up and fly xl', 'sky coaster xl', 'solid rock no limit festival shirt large', 'sp tennis medium', 'stanford russel m college shirt', 'star wars large retro very very thin and longer fit sleepshirt', 'star wars own every moment xl', 'stones 2019', 'summit lambdas 2001 m vintage', 'super bowl xlv packers shirt 2xl', 'switchfoot deadstock t shirt medium 25', 'syracuse medium orange', 'talladega speedway nascar 3xl', 'tampa bat bucs logo athletic xl 10 ', 'team sylvanua #48 racing l', 'the beatles abbey road large retro', 'the idiots believe large', 'the office xl', 'the office xl thin material', 'the shoe box black earth xl russel', 'to infinity and beyond l', 'toe jones xl vintage band', 'tony stewart xxl nascar shirt bass pro shop', 'trans siberan orchestra 2xl', 'university of notre dame small champion', 'vintage champion cornell medium', 'walker weasel l', 'walking dead xl', 'washington dc xl embroidery', 'whos the master shonuff? 2xl', 'winchester ammunition xl', 'wisconsin basketball championship xl badger', 'wisconsin ginseng festival l', 'wisconsin russell college l', 'wisconsine cornhuskers xl fired up', 'wisonain badgers shir xl', 'yale xl college shirt', 'yankees center swoosh xl', 'yellowstone m', 'zimmerman xl mlb', 'zz top xl club tacos 2006 w/ stainage']
+brandss = {
+    'disney items':['goofy', 'mickey', 'duck', 'disney', 'star', 'boba fett'],
+    'nfl brand':['nfl', 'raiders', 'packers', 'lions', 'saints', 'cardinals', 'chargers', 'bucs', 'buccanears', 'browns', 'cowboys', '49er', 'ravens', 'broncos', 'seahawk', 'seahawks', 'panthers', 'jets', 'colts', 'falcons', 'jaguars', 'jags', 'chiefs', 'bills', 'eagles', 'rams', 'titans', 'bengals', 'steelers', 'dolphins', 'patriots', 'vikings', 'commanders', 'redskins'],
+    'nba brand':['nba', 'kobe', 'lebron', 'kd', '76ers', 'hawks', 'bucks', 'bulls', 'cavaliers', 'celtics', 'clippers', 'grizzlies', 'heat', 'hornets', 'jazz', 'kings', 'knicks', 'lakers', 'magic', 'mavericks', 'nets', 'nuggets', 'pacers', 'pelicans', 'pistons', 'raptors', 'rockets', 'spurs', 'suns', 'thunder', 'timberwolves', 'trailblazers', 'warriors', 'wizards'],
+    'harley':['harley', 'davidson'],
+    'chase authentics':['racing', 'busch', 'matt', 'nascar', 'tony', 'dale', 'jimmy', 'johnson', 'jimmie', 'fireball roberts', 'carl long', 'fred lorenzen', 'david reutimann', 'richard childress', 'ned jarrett', 'kyle petty', 'ricky rudd', 'adam petty', 'joe weatherly', 'donnie allison', 'dave marcis', 'tim richmond', 'bobby labonte', 'ricky craven', 'kyle busch', 'geoff bodine', 'bobby allison', 'joey logano', 'junior johnson', 'todd bodine', 'kenny wallace', 'carl edwards', 'denny hamlin', 'jamie mcmurray', 'benny parsons', 'kevin harvick', 'lee petty', 'jeff burton', 'david pearson', 'kurt busch', 'kenseth', 'terry labonte', 'michael waltrip', 'kasey kahne', 'earnhardt', 'cale yarborough', 'alan kulwicki', 'tony stewart', 'jimmie johnson', 'rusty wallace', 'darrell waltrip', 'davey allison', 'dale jarrett', 'mark martin', 'jeff gordon', 'bill elliott', 'dale earnhardt', 'richard petty'],
+    'looney tunes':['acme', 'tweety', 'looney tunes', 'taz', 'sylvester'],
+    'mlb':['mlb', 'angels', 'astros', 'athletics', 'jays', 'braves', 'brewers', 'cardinals', 'cubs', 'yankee', 'diamondbacks', 'dodgers', 'giants', 'guardians', 'mariners', 'marlins', 'mets', 'nationals', 'orioles', 'padres', 'phillies', 'pirates', 'rangers', 'rays', 'sox', 'reds', 'rockies', 'royals', 'tigers', 'twins', 'sox', 'yankees'],
+    'nike':['nike', 'nik'],
+    'reebok':['reebok', 'reeboks'],
+    'russell':['russell', 'russel'],
+    'new era':['new era', 'era'],
+    'adidas':['adidas', 'adida'],
+    'jordan':['jordan', 'jordans', 'jorda'],
+    'looney tunes':['taz', 'tweety', 'sylvester', 'looney', 'looney tunes'],
+    'tommy hilfiger':['tommy', 'hilfiger', 'hilfigher'],
+    'marvel':['marvel', 'spiderman', 'spider-man', 'captain america', 'thor', 'iron man', 'iron-man', 'deadpool', 'marvel'],
+    'columbia':['columbia', 'columbi'],
+    'starter':['starter', 'starters'],
+    'patagonia':['pata', 'patagonia'],
+    'hard rock cafe': ['hard rock', 'hard rock cafe', 'rock cafe']
+    }
+sizes = {
+    '4XL' :['4x', '4xl', 'xxxxlarge', 'xxxxl'], 
+    '3XL' :['xxxl', ' xxxlarge', '3xl', ' 3xlarge', '3x'], 
+    '2XL' :['xxlarge' ' 2xlarge', '2xlarge', '2x', 'xxl', '2xl'], 
+    'XL' :['xl', 'xlarge'], 
+    'LARGE' :['large', 'l'],
+    'MEDIUM' :['m', 'medium', 'mediun'], 
+    'SMALL' :['small', 's'],
+    'NEEDSIZE': ['needs size']
+}
+colors = {
+    'color': ['black', 'blue', 'brown', 'burgundy', 'cream', 'gold', 'green', 'grey', 'khaki', 'multi', 'navy', 'orange', 'pink', 'purple', 'red', 'silver', 'tan', 'white', 'yellow']
+}
+category = {
+    #category for dropdown menu::: mostly going to be either shirts, jackets or coats, for now, later will add shoes, shorts, hats, etc
+    'shirtitem' :['shirt', 'shir', 'shit'],
+    'jacketitem':['jacket', 'jackett', 'zipper'],
+    'hoodieitem':['hoodie', 'hooded', 'hoody'],
+    'sweateritem':['sweater'],
+    'sweatshirtitem':['sweatshirt', 'sweatshir'],
+    'nocategory':['missincategory']
+    }
+condition = {
+    'new':['deadstock', 'ds', 'new', 'nwt', 'new with tags', 'with tag', 'new with tag', 'brand new'],
+    'damaged':['distressed', 'rip', 'stained', 'stain', 'tear', 'hole']
+    #else = used
+}
+age = {
+    'modern':['2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017', '2018', '2019', '2020', '2021', '2022'],
+    'Y2K': ['y2k', '2000', '2001', '2002', '2003', '2004', '2005', '2006', '2007', '2008','2009'],
+    '90': ['90\'s', '91', '92', '93', '94', '95', '96', '97', '98', '99']
+}
+def creating_pygsheet():
+    try:
+        sheet = gc.open_by_key(sheet_title)
+        print(f"Opened spreadsheet with id:{sheet.id} and url:{sheet.url}")
+    except pygsheets.SpreadsheetNotFound as error:
+        # Can't find it and so create it                                                                                                                                                                                                                                                                                                  
+        res = gc.sheet.create(sheet_title)
+        sheet_id = res['spreadsheetId']
+        sheet = gc.open_by_key(sheet_id)
+        print(f"Created spreadsheet with id:{sheet.id} and url:{sheet.url}")
+        #this shares sheet with yourself
+        sheet.share('argelarroyo2001@gmail.com', role='writer', type='user')
+
+all_2_sources = ['Vintage', 'Preloved']
+all_3_styles = ['Casual', 'Retro', 'Y2K']
+count = 0
+# stop_words = set(stopwords.words('english'))
+new_key = list(brandss.values())
+condtion_keys = list(condition.values())
+new_size = list(sizes.values())
+numb = list(range(8, 48))
+number = list(range(50, 300))
+numberss = numb + number
+stringed_numbers = [str(x) for x in numberss]
+word_title_list = []
+list_with_only_title = []
+list_with_only_title2 = []
+updated_list_without_duplicates1 = []
+final_result_updated_list = []
+updated_list_without_duplicates3 = []
+updated_list_without_duplicates4 = []
+word_key_list = []
+prices_with_index = []
+matches = []
+non_matches= []
+identify_price_list = []
+all_key_total = []
+identify_price_list_titles = []
+condition_values = []
+for new_keys in new_key:
+    for newer_keys in new_keys:
+        all_key_total.append(newer_keys)
+
+for value in condtion_keys:
+    for val in value:
+        condition_values.append(val)
+#function to match words with brandss value
+
+
+def repeating_list(listing):
+    for i in listing:
+        print(i)
+    print(len(listing))
+
+def enumeration(listing):
+    for i in range(len(listing)):
+        ii = i + 1
+        si =  ii, listing[i]
+        prices_with_index.append(si)
+
+identify_price_list_dictionary = []
+pc = 0
+price_lists = []
+def identify_price(sentence):
+    global pc
+    global pattern
+    global mystring
+    pattern = re.findall(r"[^#09847-]\d{2}$", sentence)
+    if pattern:
+        patternn = [i.strip(' ') for i in pattern] 
+        patter = ' '.join(patternn)
+        if len(patter[0]) < 3:
+            matches.append(patter)
+            patte = patter
+        else: 
+            updated_title = (titled) + " Confirm Price:"
+            non_matches.append(updated_title)
+            patte = "confirm price " 
+    else:
+        pattern = "??"
+        updated_title = (titled) + " Needs Price:"
+        non_matches.append(updated_title)
+        patte = " "
+    price_layout = {
+        # 'title': titled,
+        'price': patte
+    }
+    pc += 1
+    identify_price_list.append(price_layout)
+    if titled not in identify_price_list_titles:
+        price_lists.append(patte)
+        identify_price_list_dictionary.append(price_layout)
+        identify_price_list_titles.append(titled)
+    return pattern
+
+source_for_1_tuple = []
+source_for_2 = []
+condition_tuples = []
+condition_titles = []
+def identify_condition(wwww):
+    for cond_word in condition_values:
+        if cond_word in wwww:
+            if cond_word in condition['new']:
+                item_condition = 'Brand new (brand_new)'
+                source1_for_1 = 'Deadstock (deadstock)'
+            elif cond_word in condition['damaged']:
+                item_condition = 'Used - Fair (used_fair)'
+                source1_for_1 = 'Preloved (preloved)'
+                
+            if titled not in condition_titles:
+                cond_tupe = titled, item_condition
+                source_tupe = titled, source1_for_1
+                source_for_1_tuple.append(source_tupe)
+                condition_titles.append(titled)
+                condition_tuples.append(cond_tupe)
+
+source1_list_final = []
+tit_w_no_source1 = []
+def diff_btwn_source1():
+    titles_w_no_source1 = list(set(updated_title_list_lower) - set(condition_titles))
+    for titles in titles_w_no_source1:
+        titties = titles, 'Preloved (preloved)'
+        tit_w_no_source1.append(titties)
+        title_source_11 = tit_w_no_source1 + source_for_1_tuple
+        source1_list = sorted(title_source_11)
+    for tup, source in source1_list:
+        source1_list_final.append(source)
+
+cond_num = 0
+conditions_list = []
+titles_w_no_condition2 = []
+def diff_btwn_list_condition():
+    global conditions_list
+    titles_w_no_condition = list(set(updated_title_list_lower) - set(condition_titles))
+    for titles in titles_w_no_condition:
+        titties = titles, 'Used - Excellent (used_excellent)'
+        titles_w_no_condition2.append(titties)
+        total_title_condition1 = titles_w_no_condition2 + condition_tuples
+        condition_list = sorted(total_title_condition1)
+    for tup, cond in condition_list:
+        conditions_list.append(cond)
+
+age_titles = []
+age_tuple_list = []
+def identify_age(wwww):
+    global age_of_item
+    for ages in age.values():
+        for agess in ages:
+            if agess in wwww:
+                if agess in age['modern']:
+                    age_of_item = 'Modern (modern)'
+                elif agess in age['Y2K']:
+                    age_of_item = '00s (y2k)'
+                elif agess in age['90']:
+                    age_of_item = '90s (90s)'
+                if titled not in age_titles:
+                    age_tuple = titled, age_of_item
+                    age_titles.append(titled)
+                    age_tuple_list.append(age_tuple)
+
+age_list = []
+title_w_no_age2 = []
+def diff_btwn_age():
+    global age_tuple
+    title_w_no_age = list(set(updated_title_list_lower) - set(age_titles))
+    for titles in title_w_no_age:
+        titties = titles, 'Modern (modern)'
+        title_w_no_age2.append(titties)
+        total_title_age1 = title_w_no_age2 + age_tuple_list
+        total_title_age2 = sorted(total_title_age1)
+    for tup, ageee in total_title_age2:
+        age_list.append(ageee)
+
+color_title = []
+color_tuple = []
+def identify_color(wwww):
+    for color in colors.values():
+        for ind_color in color:
+            if ind_color in wwww:   
+                if ind_color == 'black':
+                    icolor = 'Black (black)'
+                elif ind_color == 'blue':
+                    icolor = 'Blue (blue)'
+                elif ind_color == 'brown':
+                    icolor = 'Brown (brown)'
+                elif ind_color == 'burgundy':
+                    icolor = 'Burgundy (burgundy)'
+                elif ind_color == 'cream':
+                    icolor = 'Cream (cream)'
+                elif ind_color == 'gold':
+                    icolor = 'Gold (gold)'
+                elif ind_color == 'green':
+                    icolor = 'Green (green)'
+                elif ind_color == 'grey':
+                    icolor = 'Grey (grey)'
+                elif ind_color == 'khaki':
+                    icolor = 'Khaki (khaki)'
+                elif ind_color == 'navy':
+                    icolor = 'Navy (navy)'
+                elif ind_color == 'orange':
+                    icolor = 'Orange (orange)'
+                elif ind_color == 'pink':
+                    icolor = 'Pink (pink)'
+                elif ind_color == 'purple':
+                    icolor = 'Purple (purple)'
+                elif ind_color == 'red':
+                    icolor = 'Red (red)'
+                elif ind_color == 'silver':
+                    icolor = 'Silver (silver)'
+                elif ind_color == 'tan':
+                    icolor = 'Tan (tan)'
+                elif ind_color == 'white':
+                    icolor = 'White (white)'
+                elif ind_color == 'yellow':
+                    icolor = 'Yellow (yellow)'
+                if titled not in color_title:
+                    color_tupe = titled, icolor
+                    color_title.append(titled)
+                    color_tuple.append(color_tupe)
+
+domestic_shipping = []
+interational_shipping = []
+location_list = []
+style_1 = []
+style_2 = []
+style_3 = []
+empty_list = []
+color_list = []
+title_w_no_color2 = []
+def diff_btwn_color():
+    title_w_no_color = list(set(updated_title_list_lower) - set(color_title))
+    for title in title_w_no_color:
+        titties = title, ' '
+        title_w_no_color2.append(titties)
+        total_title_color1 = title_w_no_color2 + color_tuple
+        total_title_color2 = sorted(total_title_color1)
+        empty_filler = ' '
+        source2_for_2 = 'Vintage (vintage)'
+        style_for_1 = 'Sportswear (sportswear)'
+        style_for_2 = 'Y2K (y2_k)'
+        style_for_3 = 'Casual (casual)'
+        location = 'United States'
+        domestic_shipping_price = '3'
+        interational_shipping_price = '15'
+    for tup, colorr, in total_title_color2:
+        interational_shipping.append(interational_shipping_price)
+        domestic_shipping.append(domestic_shipping_price)
+        location_list.append(location)
+        source_for_2.append(source2_for_2)
+        style_1.append(style_for_1)
+        style_2.append(style_for_2)
+        style_3.append(style_for_3)
+        color_list.append(colorr)
+        empty_list.append(empty_filler)
+
+category_title = []
+category_tuple = []
+def identify_category(wwww):
+    for cate in category.values():
+        for ind_cat in cate:
+            if ind_cat in wwww:
+                if ind_cat in category['shirtitem']:
+                    item_category = 'Men >> Tops >> Shirts (menswear, tops, shirts)'
+                elif ind_cat in category['jacketitem']:
+                    item_category = 'Men >> Coats and jackets >> Jackets (menswear, coats-jackets, jackets)'
+                elif ind_cat in category['hoodieitem']:
+                    item_category = 'Men >> Tops >> Hoodies (menswear, tops, hoodies)'
+                elif ind_cat in category['sweateritem']:
+                    item_category = 'Men >> Tops >> Sweaters (menswear, tops, jumpers)'
+                elif ind_cat in category['sweatshirtitem']:
+                    item_category = 'Men >> Tops >> Sweatshirts (menswear, tops, sweatshirts)'
+                if titled not in color_title:
+                    category_tupe = titled, ind_cat
+                    category_title.append(titled)
+                    category_tuple.append(category_tupe)
+
+category_list = []
+final_category_layout_list = []
+titles_w_no_category2 = []
+def diff_btwn_list_category():
+    titles_w_no_category = list(set(updated_title_list_lower) - set(category_title))
+    for titles in titles_w_no_category:
+        titties = titles, "missincategory"
+        titles_w_no_category2.append(titties)
+        total_title_category1 = titles_w_no_category2 + category_tuple
+        total_title_category2 = sorted(total_title_category1)
+    for index, tups in enumerate(total_title_category2):
+        category_sizing = tups[1]
+        if category_sizing in category['shirtitem']:
+            category_of_item = 'Men >> Tops >> Shirts (menswear, tops, shirts)' 
+        elif category_sizing in category['jacketitem']:
+            category_of_item = 'Men >> Coats and jackets >> Jackets (menswear, coats-jackets, jackets)'
+        elif category_sizing in category['hoodieitem']:
+            category_of_item = 'Men >> Tops >> Hoodies (menswear, tops, hoodies)'
+        elif category_sizing in category['sweateritem']:
+            category_of_item = 'Men >> Tops >> Sweaters (menswear, tops, jumpers)'
+        elif category_sizing in category['sweatshirtitem']:
+            size_of_category_of_itemitem = 'Men >> Tops >> Sweatshirts (menswear, tops, sweatshirts)'
+        elif category_sizing in category['nocategory']:
+            category_of_item = 'Men >> Tops >> Shirts (menswear, tops, shirts)'
+
+        category_layout = {
+            # 'title': tups[0],
+            'category': category_of_item
+        }
+        category_list.append(category_of_item)
+        final_category_layout_list.append(category_layout)
+
+def identify_size(wwww):
+    global size_of_item
+    global size_count
+    global sizing
+    global titled
+    global ww
+    global www
+    run_once = 0
+    if run_once == 0:
+        for new_sizes in new_size:
+            for newer_sizes in new_sizes:
+                if newer_sizes in wwww:
+                    if newer_sizes in sizes['4XL']:
+                        size_of_item = 'XXXXL' 
+                    elif newer_sizes in sizes['3XL']:
+                        size_of_item = 'XXXL'
+                    elif newer_sizes in sizes['2XL']:
+                        size_of_item = 'XXL'
+                    elif newer_sizes in sizes['XL']:
+                        size_of_item = 'XL'
+                    elif newer_sizes in sizes['LARGE']:
+                        size_of_item = 'L'
+                    elif newer_sizes in sizes['MEDIUM']:
+                        size_of_item = 'M'
+                    elif newer_sizes in sizes['SMALL']:
+                        size_of_item = 'S'
+                    size_layout = {
+                        # 'title': titled,
+                        'size': size_of_item
+                    }
+                    if titled not in overall_titles_size:
+                        size_tuple = titled, newer_sizes
+                        overall_titles_size.append(titled)
+                        size_list_titles.append(titled)
+                        size_list_tuple.append(size_tuple)
+                    run_once = 1
+                    return size_of_item
+                
+overall_titles_size = []
+titles_w_no_size1 = []
+titles_w_no_size2 = []
+size_list_titles = [] 
+size_list_tuple = []
+size_count = 0
+sizing = 0    
+tup_num = 0
+sizing_list = []
+final_size_layout_list = []
+def diff_btwn_2_list_size():
+    global tup_num
+    titles_w_no_size1 = list(set(updated_title_list_lower) - set(size_list_titles))
+    for titles in titles_w_no_size1:
+        titties = titles, "needs size"
+        titles_w_no_size2.append(titties)
+        total_title_size1 = titles_w_no_size2 + size_list_tuple
+        total_title_size2 = sorted(total_title_size1)
+    for index, tups in enumerate(total_title_size2):
+        newer_sizes = tups[1]
+        if newer_sizes in sizes['4XL']:
+            size_of_item = 'XXXXL' 
+        elif newer_sizes in sizes['3XL']:
+            size_of_item = 'XXXL'
+        elif newer_sizes in sizes['2XL']:
+            size_of_item = 'XXL'
+        elif newer_sizes in sizes['XL']:
+            size_of_item = 'XL'
+        elif newer_sizes in sizes['LARGE']:
+            size_of_item = 'L'
+        elif newer_sizes in sizes['MEDIUM']:
+            size_of_item = 'M'
+        elif newer_sizes in sizes['SMALL']:
+            size_of_item = 'S'
+        elif newer_sizes in sizes['NEEDSIZE']:
+            size_of_item = " "
+        size_layout = {
+            'title': tups[0],
+            'size': size_of_item
+        }
+        sizing_list.append(size_of_item)
+        final_size_layout_list.append(size_layout) 
+
+beginning_title_no_dup = []
+beginning_tuple_no_dup = []
+overall_titles = []
+count = 0
+def organizing_brand(nw):
+    global word_key
+    global titled
+    global size_of_item
+    global pre_title_count
+    global word_title_layout
+    global count
+    global tw_tuple
+    value_count = 0
+    run_once = 0
+    if run_once == 0:
+        if value_count < 2:
+            for key in all_key_total:
+                if key in titled:
+                    value_count += 1
+                    if titled not in overall_titles:
+                        tw_tuple = titled, key
+                        overall_titles.append(titled)  
+                        beginning_tuple_no_dup.append(tw_tuple)
+                        beginning_title_no_dup.append(titled)
+
+IC = 0
+titles_list = []
+brand_list = []
+overall_final_list = []
+titles_with_no_keys = []
+def diff_btwn_2_list_brand():
+    global identify_price_list
+    global IC
+    titles_with_no_key = list(set(updated_title_list_lower) - set(beginning_title_no_dup))
+    for titles in titles_with_no_key:
+        titless = titles, "???"
+        titles_with_no_keys.append(titless)
+        total_titles_brand1 = titles_with_no_keys + beginning_tuple_no_dup
+        total_titles_brand2 = sorted(total_titles_brand1)
+    for index, tup in enumerate(total_titles_brand2):
+        www = tup[1]
+        if www in brandss['disney items']:
+            word_key = "Disney (disney)"
+        elif www in brandss['nfl brand']:
+            word_key = "NFL (nfl)"
+        elif www in brandss['nba brand']:
+            word_key = "NBA (nba)"
+        elif www in brandss['harley']:
+            word_key = "Harley Davidson (harley-davidson)"
+        elif www in brandss['chase authentics']:
+            word_key = "Chase Authentics (chase-authentics)"
+        elif www in brandss['looney tunes']:
+            word_key = "looney tunes"
+        elif www in brandss['mlb']:
+            word_key = "NBA (nba)"
+        elif www in brandss['hard rock cafe']:
+            word_key = 'hard Hard Rock Cafe (hard-rock-cafe) cafe'
+        elif www in brandss['nike']:
+            word_key = "Nike (nike)"
+        elif www in brandss['reebok']:
+            word_key = "Reebok (reebok)"
+        elif www in brandss['adidas']:
+            word_key = "Adidas (adidas)"
+        elif www in brandss['new era']:
+            word_key = "New Era (new-era)"
+        elif www in brandss['jordan']:
+            word_key = "Jordan (jordan)"
+        elif www in brandss['looney tunes']:
+            word_key = "Looney Tunes (looney-tunes)"
+        elif www in brandss['tommy hilfiger']:
+            word_key = "Tommy Hilfiger (tommy-hilfiger)"
+        elif www in brandss['marvel']:
+            word_key = "Marvel (marvel)"
+        elif www in brandss['columbia']:
+            word_key = "Columbia Sportswear (columbia-sportswear)"
+        elif www in brandss['patagonia']:
+            word_key = "Patagonia (patagonia)"
+        elif www in brandss['starter']:
+            word_key = "Starter (starter)"
+        else:
+            word_key = ' '
+        IC += 1
+        brand_layout = {
+            # 'index': index,
+            'title': tup[0] + general_description,# make sure to add + general_description to title, just not doing it for now cause it is a huge hassle
+            # 'word key': word_key,
+        }
+        titles_list.append(tup[0] + " \n\n\n " + general_description)
+        brand_list.append(word_key)
+        overall_final_list.append(brand_layout)
+
+final_final_list = []
+def combining_lists_for_depop():
+    global total_list
+    global category_list
+    global price_lists
+    global sizing_list
+    global overall_final_list
+    z = zip(titles_list, category_list, price_lists, brand_list, conditions_list, sizing_list, color_list, color_list, source1_list_final, source_for_2, age_list, style_1, style_2, style_3, location_list, domestic_shipping, interational_shipping)
+    for item in z:
+        final_final_list.append(item)
+#this enters every single possible thing but the size text, says its invalid for some reason, and I need some help
+#everything else works, but the size for some reason, it has to be a depop problem
+def create_google_sheet():
+    global final_final_list
+    SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
+    SERVICE_ACCOUNT_FILE = '/Users/Argel Arroyo/Desktop/Selenium_python/depop-bulk-lister.json'
+    creds = None
+    creds = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+    # The ID and range of a sample spreadsheet.
+    spreadsheet_id = '1FHHJ6j0XdHggqJJEQ6MI4eua1H5FiJAQ'
+    service = build('sheets', 'v4', credentials=creds)
+    sheet = service.spreadsheets() 
+    range_doc = 'Template!A5:Q110'
+    request = sheet.values().append(spreadsheetId=spreadsheet_id, range=range_doc, valueInputOption='USER_ENTERED', insertDataOption='INSERT_ROWS', body={'values':final_final_list}).execute()
+
+def turning_dictionary_into_list():
+    for listin in overall_final_list:
+        print(listin.values())
+        print('yuh')
+
+################################
+#MAIN CHUNK OF CODING
+################################
+print("Start of Main Chunk of Code")
+
+for titled in updated_title_list_lower:
+    title_words = titled.split(" ")
+    identify_price(titled)
+    identify_condition(title_words)
+    identify_category(title_words)
+    identify_color(title_words)
+    identify_age(title_words)
+    identify_size(title_words)
+    organizing_brand(title_words)
+diff_btwn_2_list_brand()
+diff_btwn_list_category()
+diff_btwn_source1()
+diff_btwn_2_list_size()
+diff_btwn_age()
+diff_btwn_color()
+diff_btwn_list_condition()
+combining_lists_for_depop()
+create_google_sheet()
+
+
+# 10-17-22 1pm
+#so still having issues figuring out how to get the overall layout done,  I just need to
+#figure out how to combine the dictionaries together but for some reason I just cant
+#I have all the correct info, but size and price are just missing like 1 or 2 factors for some reason
+#once all the info matches up and it can return a result for price and size, 199 each, then
+#i would be able to combine everything and have the code to combine the dictionaries waiting 
+#for me to figure out the problem on why all the lists of dictionaires are different lengths
+# i need to complete this, this project is the only thing that can justify my unemployment for so long
+#You have neglected everything else, other than fantasy football because thats sooooo important 
+#to your future success, when are you going to learn, this is your life, are you not scared to fail?
+#the same way your scared to not win, the same way you get upset when you didnt win the fantasy tournament
+#and got second, or when you didn't make it to state, what is the matter with you, you are numb, you
+#dont feel much, but you have to feel this, I am passionate about coding, this is my future but
+#jeez you need to activate the next gear, your not going to be successful if you dont,
+#you may be average at coding, but i dont want to just be average, I want to be the best I can be
+#problems like this only get easier the more you attack them so keep attacking
+#
+#4pm
+# 
+#congrats you have complete step 2 of the process, took a lil longer than expected but as long as you finished it
+# so you have the current dictionary and now you need to figure out how to paste the title in google sheets in increments of
+# 100, so I need to figure out how to break it into increments of 100 too, but everything else should be cake now, once I figure 
+# out how to paste into sheets, then that can be a universal info that can be used with all the selling apps, so then all i nested_scopes
+# to focus on is getting the info into the sheets
+
+#10-19-22
+# so far so good, just learning a new module pygsheets in terms of pasting all the info from dictionary into the sheets 
+# then turning into csv. Your goal by tongiht is to be able to have all the info figured and appended to the table
+#still need to identify the color, if any, and
+# ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;GOAL TODAY:::::::::::::::::::::::::::::
+# paste all info into google sheets, can store all into one then for depop i can break down into 100's
+# turn into csv
+# gather all the pics then make sure pics are in order and placed properly, since depop makes the Draft only 
+# steps for pics ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+#     take 4 pics for everything; front, back(if no back, take either pic of imperfection or tag), tag, any imperfections !!!!!!! must be 4 pics for each 
+# BELLA IS TAKING CARE OF THE PICS FOR ME AND I WILL BE PAYING HER, NOW THE REAL ISSUE IS CREATING THE TUPLE IN ORDER FOR THE DEPOP CAN
+#EASILY APPEND ALL THE INFORMATION,
+#BREAK DOWN DCITIONARY INTO INDIVIDUAL LIST
+
+# 10-21-22
+# so far so good, programs running nice, has been switched to list, ready to be installed into the pygsheets module I have already created, The only thing left really
+# is 
+# stripping the price []  
+# '' in the string  
+# changing the symbols back to an empty string,
+# and organizing pictures
+# the pictures i feel like is going to be the last hardest part left
+#   - send pictures to my email, 
+#   = scrape from my email into groups of 4
+#   = organize it somehow, going to be difficult since pictures aren't really in alphabetical order or dont even have an alphabetical order, maybe i can make a game
+#   - out of it where i link the pict to the title and thats the only manual work that has to be done, other than creating all the info too  
+#   -  but for the most part i have it all ready, good work 
+# , but then after that i can officially say that depop bulk listing is complete 
+# the next thing would be transferring this data to the other sites but should be easy witn the google sheet already created, just got to find some way to 
+# send_keys to all the neccessary info, will probably start with grailed first, then poshmark, then ebay, and so on and so Forth 
+# eventually would like to be able to webscrape all the info from my depop page to then transfer into other sites and use the information already given there 
+# overall should be finihsed witht his bulk listing thing by tonight, 
+
+# 10-28-22
+# took a few days off to focus more on school since it officially started this week but overall this project is looing great,
+# I am really stuck on that part with the pictures but will probably ask on stack overflow, other than that template is set,
+# Don't have much to do manually thankfully other than add shirt titles and price titles, colors and all that other stuff don't matter too  much 
+# what matters at the moment to me is getting it all posted on these sites, I can adjust it later to fine tune it and get it perfect,
+#  but I just need to figure out a way to use this same template to post on every other site, As long as Im able to make this template thats all that matters 
+# the problem is at the moment is that it only gets info from whatnot, which i dont plan on using too much anymore, shit on there is way to cheap, yeah it 
+# gets sold instantly, but like longterm Id rather have a x8 chance of selling it with depop, poshmark, grailed, ebay, mercari, offerup, 
+# almost done with project, goal for right now is to create the drafts in depop, then maybe later I can start seeing how to get this csv onto other sites,
+# then eventually will have to learn how to extract this info on other sites 
+# then make a universal webpage to get info from all the sites, so that all the titles, pictures, etc are the same and easy to not deal with duplicates.
+#one key thing is not to spend too much time on one thing, its good to problem solve like that, but for like the pics, that should be a final touches type thing 
+# since i dont plan on using that whatnot extraction form too much, should prioritize depop more and getting that depop inventory all over poshmark and grailed. 
+# then I can get back to $1500 a week and then whatever money I can get from selling my product monthtly, This is so much work I feel Like i can sell for more than 30
+# easily because its literally hiring a person to do hundreds of hours a work, for just 2 minimum wage hours, thats insane.  You can maybe get like 100 things posted on each site if you 
+# try really hard and dont take any breaks, so why would you spend time on repetitive shit, when you can hire a computer to do it for you, and to do it instantly, with minimal work yourself,
+# you will make money using this, and I can collect stats from users to see how theyre inventory, sales, followers, etc has grown and how if your really trying to take this seriously, then this 
+# is the only way, you'd be stupid not to do this
+#now not sure why its not printing the link, it literally was before, I hate this shit sometimes
+#now its all set up, but must figure out how to split into groups of 100 since thats the max for depop. 
+#Then once Im able to do that, then I can officialy create the drafts, I'm sure I can do that easily by hand, but just want to find a way to capy and paste
+# to another worksheet/page, got to find out whether it is needed to be on a new page or not, Im assuming a new sheet since regardless it didnt give me the option to Choose
+
+# PROBLEMS IN CODE
+# HOW DO I GET PICTURES TO BE IN ORDER, SINCE THIS IS SORTED AND THE PICS ARE TAKEN RANDOMLY BEFORE I CREATE THE TITLE
+# CREATE A TUPLE WITH IMAGE LINK AND TITLE AGAIN, THEN CAN BE SORTED THAT WAY
+# THEN NEED TO MAKE THE GOOGLE SHEET BREAK DOWN INTO GROUPS OF 100'S SINCE THATS THE MAX FOR DEPOP
+#PICTURES WOULD HAVE TO BE IN ANOTHER LAYOUT, NO ROOM FOR IT IN THE GOOGLE SHEET
+ 
+
+#need to take off the [' '] in price to leave just the number as a string
+#figure out how to paste all this info properly into excel sheet, 
+
+#get 199 results in terms of pics for clothes,
+#might be difficult rn since a lot of my whatnot stuff has no pictures currently but
+# #should be a similar process
+# :::::::::::::::::::POSSIBLE IDEAS:::::::::::::::::
+# LEARN SOME FRONT END DEVELOPMENT TO CREATE A UNIVERSAL WEBPAGE TO VIEW ALL PLATFORMS AT ONCE 
+# THAT CAN SEE LISTINGS THAT ARE UNIVERSAL ON ALL AND THOSE THAT ARE ONLY ON ONE platform
+
+
+
+
+#am now a lot closer to finishing, just need to figure out how to get into tuples to recognize
+#the second element in it, being either the "??" or a word_key,
+#maybe useing the remaind to find all even, or odd if its odd, after turning into a list, then
+#converting back to tuple??
+#well do some more thinking in a bit
+
+#that method worked like i predicteds, i used the list with keys, suvtracted to the list 
+#overall list, which returned all the strings with no keys
+#so now i must comvine both lists with strings in alphavetical order, then make it acesivle
+#with the overall layout in vrand that I must uncomment as well,
+#I was trying to do too muich the solution was super simple, I need to stop trying to
+#think outside the vox too much if the solution is there then it is there
+#but hyeah my eyes hurt mow so i will ve hitting the hay for the time veing until then coding software
+#they will make me a decent amount of moeny
+#steps make compativle with depop first, then with that go onto other sites
+#and branch out from there
+#what would be even better is having all the info on one main page, rather than having
+#to go on each individual page to grav your info, its all in there,
+#can identify if one has more than the other, which sites sell for more, and of what they sell more in
+#can access a lot of data for me that I can then ship off tbut i am ready, this will vbe amao vig companies in terms of what is
+#how and what is not, but I get the feeling that all these sites might be doing that already,
+#but you never know so i will look into that
+#overall this is all coming out nice and super excitged for hwo the end result will look
+#taking a lot longer than expected tho, i thought i would finihs this last week, vut will in fact take a few more weeks most likely
+# #
+
+
+#THOUGHTS ON PROJECT
+# Just fixed the identify_size function, was pretty difficutl, but did it and was able to clean up the code in it a bit too,
+# identify price is correct too, gives a full 199
+# each of these are off by a few so i got to figure out how and why they are off by a bit
+# identify_brand is still only returning half of the total, but its good that price and size are taken care of,
+# numbered should be easy, title too
+# other than figuring out how to only get one sentence to pass through rather than like the same one 6 times but i think i can use the samefile
+# filtering method I used in size definition, 
+# also am going to need the pictures from it to, adn to be able to transfer,
+# i dont want my computer getting stormed with pics like my phone, so i need to be able to go through files too, and i need to properly install my hard drive
+#then once that is done i can create an overall layout and enter that in to a google shes
+
+
+
