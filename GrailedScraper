@@ -1,0 +1,285 @@
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import Select
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+import time
+import sqlite3
+import traceback
+import re
+#this import above gives me access to info from text_parser
+#muse use and identify where imports are needed
+# from text_parser.py import category_list
+#figure out how to import functions from other files
+chrome_options = Options()
+chrome_options.add_experimental_option("detach", True)
+driver = webdriver.Chrome("D:\\Selenium_python2\\chromedriver.exe", chrome_options=chrome_options)
+driver.get("https://www.grailed.com/sell/for-sale")
+time.sleep(2)
+wait = WebDriverWait(driver, 20)
+
+def grailed_start_up():
+    driver.find_element('xpath', '//*[@id="app"]/div[7]/div/div/div/div[2]/div/div/p[2]/a').click()
+    time.sleep(3)# add wait
+    #log in with email button
+    driver.find_element('css selector', '[data-cy="login-with-email"]').click()
+    # driver.find_element('xpath', '//*[@id="app"]/div[7]/div/div/div/div[2]/div/div/button[4]').click()
+    google_email = driver.find_element('xpath', '//*[@id="email"]')
+    google_email.send_keys("argelarroyo2001@gmail.com")
+    driver.find_element('xpath', '//*[@id="password"]').send_keys('Pineappleguy305')
+    time.sleep(1)# add wait
+    driver.find_element('xpath', '//*[@id="app"]/div[7]/div/div/div/div[2]/div/div/form/button').click()
+    time.sleep(10)# add wait
+
+def scroll_down_script():
+    last_height = driver.execute_script("return document.body.scrollHeight")
+    while True:
+    # for i in range(3):
+        # Scroll down to the bottom of the screen
+        scroll_down = driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        scroll_down
+        # Wait for the page to load
+        time.sleep(3)
+        new_height = driver.execute_script("return document.body.scrollHeight")
+        if new_height == last_height:
+            print('the end of scrolling')
+            break
+        last_height = new_height
+
+
+title_list = []
+size_list = []
+brand_list = []
+price_list = []
+color_list = []
+condition_list = []
+gender_list = []
+gencat_list = []
+cat_list = []
+images_list = []
+len_images_list = []
+first_date_list = []
+last_edited_list = []
+link_list = []
+
+
+def title_extraction():
+    item_details = driver.find_elements('xpath', '//*[contains(@class, "Text Details_title__")]')
+    title_of_item = item_details[0].text
+    print('title_of_item ' + title_of_item)
+    title_list.append(title_of_item)
+
+def brand_extraction():
+    global brand_text
+    brand_of_item = driver.find_element('xpath', '//*[starts-with(@class, "Designers_designer__")]')
+    brand_text = brand_of_item.text
+    print(brand_text)
+    brand_list.append(brand_text)
+
+def item_description_extraction():
+    mens = 'Men\'s / '
+    item_details = driver.find_elements('xpath', '//*[starts-with(@class, "Details_value__")]')
+    size_text = item_details[0].text
+    sizing_text = size_text.replace(mens, "")
+    print('size ' + sizing_text)
+    size_list.append(sizing_text)
+
+    color_of_item = item_details[1].text
+    print(color_of_item)
+    color_list.append(color_of_item)
+
+    condition_of_item = item_details[2].text
+    print(condition_of_item)
+    condition_list.append(condition_of_item)
+
+def price_extraction():
+    money_sign = "$"
+    price_of_item = driver.find_elements('xpath', '//*[starts-with(@class, "Money_root__")]')
+    price_text = price_of_item[0].text
+    text_of_price = price_text.replace(money_sign, "")
+    print(text_of_price)
+    price_list.append(text_of_price)
+
+def breadcrumb_extraction():
+    global brand_text
+    brand_text = brand_text + " "
+    breadcrumb_tags = driver.find_elements('xpath', '//*[starts-with(@class, "Link underline Breadcrumbs_link__")]')
+
+    gender_of_item = breadcrumb_tags[1].text
+    gender_text = gender_of_item.replace(brand_text, "")
+    print(gender_text)
+    gender_list.append(gender_text)
+
+    gencat_of_item = breadcrumb_tags[2].text
+    gencat_text = gencat_of_item.replace(brand_text, "")
+    print(gencat_text)
+    gencat_list.append(gencat_text)
+
+    cat_of_item = breadcrumb_tags[3].text
+    cat_text = cat_of_item.replace(brand_text, "")
+    print('cat_text' + cat_text)
+    cat_list.append(cat_text)
+
+def image_extraction():
+    total_images_link = []
+    images_of_item = driver.find_elements('xpath', '//*[starts-with(@class, "Thumbnails_thumbnail_")]')
+    len_of_images = len(images_of_item)
+    print('len of images ' + str(len_of_images))
+    len_images_list.append(int(len_of_images))
+    for images in images_of_item:
+        src_value = images.get_attribute('src')
+        print(src_value)
+        total_images_link.append(src_value)
+    total_images_link = "; ".join(total_images_link)
+    images_list.append(total_images_link)
+
+def link_extraction():
+    handles = driver.window_handles
+    driver.switch_to.window(handles[1])
+    url = driver.current_url
+    print(url)
+    link_list.append(url)
+
+def listing_number_finder(string, list):
+    print(string)
+    pattern = re.compile(r'\d+')
+
+    # Extract the digit from the strings
+    numbers = pattern.findall(string)[0]
+    if 'month' in string:
+        numbers = int(numbers) * 30
+    elif 'days' in string:
+        numbers = int(numbers)
+    print(numbers)
+    list.append(numbers)
+
+def listing_dates():
+    dates = driver.find_elements('xpath', '//*[contains(@class, "-time")]')
+    first_posted = dates[0].text
+    print(first_posted)
+    listing_number_finder(first_posted, first_date_list)
+    if len(dates) == 2:
+        last_edited = dates[1].text
+        print(last_edited)
+        listing_number_finder(last_edited, last_edited_list)
+    else:
+        last_edited_list.append(' ')
+
+def checking_all_match():
+    if len(title_list) == len(gender_list) and len(gencat_list) and len(cat_list) and len(condition_list) and len(brand_list) and len(images_list) and  len(len_images_list) and len(price_list) and len(color_list)  and len(first_date_list) and len(last_edited_list) and len(link_list):
+        print(len(title_list))
+        print('this the max count')
+    else:
+        print('Fix this')
+        print(' total titles ' + str(len(title_list)))
+        print(' men or women ' + str(len(gender_list)))
+        print(' gen category list ' + str(len(gencat_list)))
+        print(' category_list ' + str(len(cat_list)))
+        print(' brand_list ' + str(len(brand_list)))
+        print(' url list'+ str(len(link_list)))
+        print('condition_list ' + str(len(condition_list)))
+        print(' image_list ' + str(len(images_list)))
+        print(' image len_lists ' + str(len(len_images_list)))
+        print(' price list ' + str(len(price_list)))
+        print(' color list ' + str(len(color_list)))
+        print(' first date list ' + str(len(first_date_list)))
+        print(' last edited list ' + str(len(last_edited_list)))
+        
+def sqlite_database_for_grailed():
+    combined = zip(title_list, price_list, size_list, brand_list, color_list, link_list, gender_list, gencat_list, 
+                   cat_list, images_list, len_images_list, condition_list, first_date_list, last_edited_list)
+    combined_list = list(combined)
+    print(combined_list)
+    
+    connection = sqlite3.connect('D:\\Selenium_python2\\Depop_database.db')
+    cursor = connection.cursor()
+    
+    # Create a new table with an auto-incrementing primary key
+    command_create = """
+        CREATE TABLE IF NOT EXISTS gr_inv_realvintage (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            gr_title TEXT,
+            gr_price INT,
+            gr_size TEXT,
+            gr_brand TEXT,
+            gr_color TEXT,
+            gr_url TEXT,
+            gr_gender TEXT,
+            gr_gencat TEXT,
+            gr_cat TEXT,
+            gr_images TEXT,
+            gr_image_len INT,
+            gr_condition TEXT,
+            gr_firstdate TEXT,
+            gr_last_edited TEXT
+        )
+    """
+    cursor.execute(command_create)
+    
+    print('created table')
+    # Insert data into the new table
+    command_insert = """
+        INSERT OR IGNORE INTO gr_inv_realvintage (
+            gr_title,
+            gr_price,
+            gr_size,
+            gr_brand,
+            gr_color,
+            gr_url,
+            gr_gender,
+            gr_gencat,
+            gr_cat,
+            gr_images,
+            gr_image_len,
+            gr_condition,
+            gr_firstdate,
+            gr_last_edited
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """
+    cursor.executemany(command_insert, combined_list)
+    connection.commit()
+    connection.close()
+
+count = 0
+def extracting_info():
+    global count
+    try:
+        post_for_grailed = wait.until(EC.presence_of_element_located((By.XPATH, '//*[contains(@class, "lazyload-wrapper ")]')))
+        grailed_post = driver.find_elements('xpath', '//*[contains(@class, "lazyload-wrapper ")]')
+        for post in grailed_post:
+            grailed_post = driver.find_elements('xpath', '//*[contains(@class, "lazyload-wrapper ")]')
+            driver.execute_script("arguments[0].scrollIntoView(true)", grailed_post[count])
+            time.sleep(5)
+            driver.execute_script("arguments[0].click();", grailed_post[count])
+            time.sleep(3)
+
+            link_extraction()
+            brand_extraction()
+            title_extraction()
+            listing_dates()
+            image_extraction()
+            breadcrumb_extraction()
+            price_extraction()
+            item_description_extraction()
+
+            time.sleep(4)
+            driver.close()
+            time.sleep(2)
+            handle = driver.window_handles
+            driver.switch_to.window(handle[0])
+            count += 1
+    except Exception as e:
+        traceback.print_exc()
+        print('Failed to load, or I purposely closed it, Uploading the data')
+        print(e)
+        checking_all_match()
+        sqlite_database_for_grailed()
+
+grailed_start_up()
+scroll_down_script()
+extracting_info()
+checking_all_match()
+sqlite_database_for_grailed()
