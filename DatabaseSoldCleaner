@@ -1,0 +1,274 @@
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import Select
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import time
+import sqlite3
+import re
+
+#need to make this where i can just add arguments to adjust
+#would need to extract 
+#account name
+#account email and password
+#inventory table names, i can just get from dp_in_ + account_name
+dp_account_info = [('argelarroyo2001@gmail.com', 'Pineappleguy305'), ('isellclothes2001@gmail.com', 'Fernanda*1979')]
+gr_account_info = ['argelarroyo2001@gmail.com', 'Pineappleguy305']
+dp_active_table_names = ['dp_inv_isellclothes2001', 'dp_inv__realvintage']
+dp_seller_list = []
+dp_solds1_url = []
+dp_solds2_url = []
+dp_total_solds = [dp_solds1_url, dp_solds2_url]
+
+conn = sqlite3.connect("D:\Selenium_python2\Depop_database.db")
+cursor = conn.cursor()    
+chrome_options = Options()
+chrome_options.add_experimental_option("detach", True)
+driver = webdriver.Chrome("D:\\Selenium_python2\\chromedriver.exe", chrome_options=chrome_options)
+
+def extracting_titles_from_sql():
+    account1 = 'isellclothes2001'
+    dp_seller_list.append(account1)
+    account2 = '_realvintage'
+    dp_seller_list.append(account2)
+    db1_url = cursor.execute("SELECT dp_title, dp_url_list FROM dp_inv_isellclothes2001 WHERE dp_title IN (SELECT dp_title FROM dp_personal_sold);").fetchall()
+    db2_url = cursor.execute("SELECT dp_title, dp_url_list FROM dp_inv__realvintage WHERE dp_title IN (SELECT dp_title FROM dp_personal_sold);").fetchall() 
+    for title, url_list in db1_url:
+        print('isellclothes inv')
+        print("Title:", title)
+        print("URL List:", url_list)
+        dp_solds1_url.append(url_list)
+
+    for title, url_list in db2_url:
+        print('realvintage inv')
+        print("Title:", title)
+        print("URL List:", url_list)
+        dp_solds2_url.append(url_list)
+
+def remove_listings_depop():
+    global list_iterator
+    i = 0
+    list_iterator = 0
+    time.sleep(2)
+    for seller in dp_seller_list:
+        if i >= 1:
+            log_out_nav = driver.find_element('xpath', '//*[contains(@class, "DropdownArrow")]')
+            log_out_nav.click()
+            log_out_click = driver.find_element('css selector', '[data-testid="actionMenu__nav-logoutButton"]')
+            log_out_click.click()
+        # driver.get("https://www.depop.com/" + seller + '/')
+        if seller == '_realvintage':
+            account_email = 'argelarroyo2001@gmail.com'
+            account_password = 'Pineappleguy305'
+        elif seller == 'isellclothes2001':
+            account_email = 'isellclothes2001@gmail.com'
+            account_password = 'Fernanda*1979'
+        dp_start_up(account_email, account_password)
+        i += 1
+        for link in dp_total_solds[list_iterator]:
+            remove_listing(driver, link)
+        list_iterator += 1
+
+def dp_start_up(email, password):
+    time.sleep(1)
+    try:
+        driver.find_element('xpath', '//*[@id="__next"]/div/div[2]/div[2]/button[2]').click()
+        time.sleep(1.5)
+    except:
+        pass
+    print('finish start up')
+    driver.find_element('xpath', '//*[contains(@class, "styles__NavLinkText")]').click()
+    time.sleep(2)
+    username = WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[@id="username"]')))
+    username.send_keys(email)
+    time.sleep(2)
+    driver.find_element('xpath', '//*[@id="password"]').send_keys(password) 
+    driver.find_element('xpath', '//*[@id="main"]/div[3]/form/button').click()
+    time.sleep(20)
+
+def remove_listing(driver, link, program):
+    global list_iterator
+    driver.execute_script("window.open('{}');".format(link))
+    time.sleep(2)
+    driver.switch_to.window(driver.window_handles[1])
+    if program == 'DP':
+        delete_button = driver.find_element('xpath', '//*[contains(@class, "ProductOwner-styles__ButtonDelete-sc")]')
+        delete_button.click()
+        confirm_delete = driver.find_element('css selector', '[data-testid="confirmation--modal__confirm"]')
+        confirm_delete.click()
+        time.sleep(5) 
+    driver.close()
+    driver.switch_to.window(driver.window_handles[0])  
+    cursor.execute("DELETE FROM {} WHERE dp_url_list = ?;".format(dp_active_table_names[list_iterator]), (link,))
+    conn.commit()
+
+def gr_start_up(email, pw):
+    time.sleep(2)
+    log_in_button = driver.find_element('css selector', '[data-cy="login-btn"]')
+    log_in_button.click()
+    time.sleep(3)
+    log_in_button2 = driver.find_element('css selector', '[data-cy="login-with-email"]')
+    log_in_button2.click()
+    time.sleep(2)
+    google_email = driver.find_element('xpath', '//*[@id="email"]')
+    google_email.send_keys("argelarroyo2001@gmail.com")
+    driver.find_element('xpath', '//*[@id="password"]').send_keys('Pineappleguy305')
+    time.sleep(1)
+    driver.find_element('css selector', '[data-cy="auth-login-submit"]').click()
+    time.sleep(4)
+    # driver.maximize_window()
+    wait = WebDriverWait(driver, 30)
+    specific_element = wait.until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "-heart-wrapper")]')))
+
+#this is to remove dpsolds from grailed active
+#now need to remove active dp from grailed sold
+# could either do this or just use image recognition software to identify the exact copy for this
+unique_dp_list = []
+gr_dictionary = []
+def grailed_text_parser():
+    # driver.get('https://www.grailed.com/')
+    gr_start_up(gr_account_info[0], gr_account_info[1])
+    grailed_active = cursor.execute("SELECT gr_title, gr_url FROM gr_inv_realvintage;").fetchall()
+    dpsolds = cursor.execute("SELECT dp_title, dp_url_list FROM dp_personal_sold;").fetchall()
+    gr_title_list = [gr_title[0].split(' ') for gr_title in grailed_active]
+    dpsolds = [re.split(r'PLEASE|#', title[0]) for title in dpsolds]
+    dp_solds = [item[0] for item in dpsolds]
+    dp_solds = list(set(dp_solds))
+    dp_solds = [[item] for item in dp_solds]
+    dp_ind_solds = [title[0].split(' ') for title in dp_solds]
+    already_complete_titled = []
+    for i, dp_title in enumerate(dp_ind_solds):
+        # print(dp_title)
+        highest_common_word_count = []
+        highest_common_word = 0
+        for x, gr_title in enumerate(gr_title_list):
+            # print(gr_title)
+            # print(' ')
+            # print(dp_title)
+            # print(' ')
+            highest_common_word_count = []
+            highest_common_word = 0
+            common_words = set(dp_title) & set(gr_title)
+            common_word_count = len(common_words) 
+            gr_dic = gr_title, dp_title, common_word_count
+            if common_word_count > 6:
+                if gr_title not in already_complete_titled:
+                    already_complete_titled.append(gr_title)
+                    print("Number of common words:", common_word_count)
+                    grailed_url = grailed_active[x][1]
+                    highest_common_word_count.append(gr_dic)
+                    # print(gr_title)
+                    # print(grailed_url)
+                    # print(' ')
+                    # print(dp_title)
+                    # print(' ')
+                    driver.execute_script("window.open('{}');".format(grailed_url))
+                    driver.switch_to.window(driver.window_handles[1])
+                    time.sleep(5)
+                    delete_button = driver.find_elements('xpath', '//*[contains(@class,"Button_large__")]')
+                    print(len(delete_button))
+                    if len(delete_button) == 3:
+                        print('already deleted')
+                        pass
+                    else:
+                        delete_button[-1].click()
+                        time.sleep(2)
+                        input_button = driver.find_elements('xpath', '//*[contains(@class, "--input")]')
+                        input_button[1].click()
+                        time.sleep(2)
+                        sold_elsewhere = driver.find_element('css selector', '[value="soldElsewhere"]')
+                        sold_elsewhere.click()
+                        time.sleep(2)
+                        delete_item = driver.find_element('css selector', '[data-testid="reason-form-submit"]')
+                        delete_item.click()
+                        alert = WebDriverWait(driver, 10).until(EC.alert_is_present())
+                        alert.accept()
+                        time.sleep(4)
+                        driver.close()
+                    print(grailed_url)
+                    cursor.execute("DELETE FROM gr_inv_realvintage WHERE gr_url = ?", (grailed_url,))
+    conn.commit()
+    conn.close()
+                
+    # print(len(dp_ind_solds))
+    # for item in gr_dictionary:
+    #     print(item)
+    #     print(' ')
+    # print(len(gr_dictionary))
+    # print(highest_common_word_count)
+    # print(highest_common_word)
+    # print(gr_dictionary)
+
+def ebay_start_up(account_name):
+    """
+    this logs you into the assigned account you chose
+    then from here it takes you to the solds page
+    """
+    ebay_sold_link = "https://www.ebay.com/sh/ord/?filter=status:ALL_ORDERS"
+    if account_name == 'rv':
+        acc_name = 'TheRealVintage'
+        acc_pw = 'Pineappleguy305'
+    elif account_name == 'other':
+        acc_name = 'ararr_92'
+        acc_pw = 'Fernanda*1979'
+    remove_listing(driver, ebay_sold_link)
+ #sometimes it does captcha then sign in, sometimes sign in then captcha
+
+    WebDriverWait(driver, 40).until(EC.presence_of_element_located(('css selector', '[id="userid"]')))
+    username_entry = driver.find_elements('css selector', '[id="userid"]')
+    username_entry[0].send_keys(acc_name) 
+    time.sleep(2)
+    username_continue_button = driver.find_element('css selector', '[id="signin-continue-btn"]')
+    username_continue_button.click()
+    
+    WebDriverWait(driver, 80).until(EC.element_to_be_clickable(('xpath', '//*[@id="pass"]')))
+    time.sleep(1)
+    password_entry = driver.find_element('css selector', '[id="pass"]')
+    password_entry.send_keys(acc_pw) 
+    time.sleep(3)
+    driver.execute_script("window.open('{}');".format('https://www.ebay.com/mys/overview'))
+    driver.switch_to.window(driver.window_handles[-1])  
+    time.sleep(3)
+
+def ebay_sold_info_scraper():
+    sold_links = driver.find_elements('css selector', '[class="item-title"]')
+    for links in sold_links:
+        post_link = links.get_attribute('href')
+        driver.execute_script("window.open('{}');".format(post_link))
+        driver.switch_to.window(driver.window_handles[-1])
+        # view_purchased_item = driver.find_elements('css selector', '[class="ux-textspans"]')
+        view_purchased_item = driver.find_element('xpath', "//*[contains(text(), 'View purchased item')]")
+        driver.execute_script('arguments[0].click();', view_purchased_item)
+        ebay_sold_info = driver.find_elements('css selector', '[class="left wbr cc-labels-values__value"]')
+        ebay_condition = ebay_sold_info[0]
+        ebay_sale_date = ebay_sold_info[1]
+        ebay_price = ebay_sold_info[3]
+        ebay_brand = ebay_sold_info[4]
+        ebay_men_or_wmn = ebay_sold_info[5]
+        ebay_gen_category = ebay_sold_info[6]
+        ebay_cat = ebay_sold_info[7]
+        ebay_size = ebay_sold_info[10]
+        ebay_color = ebay_sold_info[12]
+        print(ebay_color.text)
+
+
+# grailed_text_parser()
+# extracting_titles_from_sql()
+# remove_listings_depop()
+
+# print(dp_total_solds)
+
+ebay_start_up('rv') #* 'rv' or 'other'
+#!way to mark the sold discrepencies to see if they should just leave it as is, since it got refunded or returned
+#need to find a way to get the dp_seller there too, maybe make a tuple with dp_seller name
+#need to find a way to filter out refunds, or just the posts thatwe still have, maybe manually??
+#i am able to extract refund or not from the csv file of all the sales too, just need to use xlsx module to get that info, then correlate the titles
+# also need ot figure out if there is an issue like this, that it will remove it from the active listing of whatever one has been choses, on top of deleting it
+
+
+#for grailed maybe even start including the full title in the description, then add like ---- to separate it from the rest of the basic general description so i can
+#easily parse through it?, its going to be pretty difficult considering i have a shit ton of items already posted
+
+#idea for grailed sold finder
