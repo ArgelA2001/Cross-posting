@@ -1,0 +1,79 @@
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import Select
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import time
+import datetime
+import os
+import requests
+import sqlite3
+import math
+chrome_options = Options()
+chrome_options.add_experimental_option("detach", True)
+driver = webdriver.Chrome("D:\\Selenium_python2\\chromedriver.exe", chrome_options=chrome_options)
+driver.get("https://www.depop.com/isellclothes2001/")
+time.sleep(2)
+
+def start_up():
+    cookies_button = driver.find_element('css selector', '[data-testid="cookieBanner__acceptAllButton"]')
+    cookies_button.click()
+    time.sleep(1)
+    log_in_button = driver.find_element('xpath', '//*[contains(@class, "sc-papXJ styles__NavLinkText-sc-__hnl163-3 kLPPHi iodPXI")]')
+    log_in_button.click()
+    time.sleep(2)
+    driver.find_element('css selector', '[data-testid="navigation__login"]').click()
+    time.sleep(2)
+    username = WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[@id="username"]')))
+    username.send_keys('isellclothes2001@gmail.com')
+    time.sleep(2)
+    driver.find_element('xpath', '//*[@id="password"]').send_keys('Fernanda*1979') 
+    driver.find_element('xpath', '//*[@id="main"]/div[3]/form/button').click()
+    time.sleep(10)
+    # profile
+    print('click first profile')
+    # sell_button = driver.find_element('css selector', '[data-testid"navigation__sellLink"]')
+    # sell_button.click()
+    sell = driver.find_element('xpath' ,'//*[contains(@class, "sc-papXJ styles__NavLinkText-sc-__hnl163-3 kLPPHi iodPXI")]')
+    sell.click()
+    time.sleep(4)
+    draft_button = driver.find_element('css selector', '[data-testid="sellerHubNavigation__itemLink--drafts"]')
+    draft_button.click()
+    time.sleep(2)
+    incomplete_drafts = driver.find_element('css selector', '[data-testid="draftsList_incomplete-label"]')
+    incomplete_drafts.click()
+    time.sleep(3)
+
+
+def draft_deleter():
+    print('starting draft deleter')
+
+    missing_description = driver.find_elements('css selector', '[data-testid="draftItem__missingFields"]')
+    print(len(missing_description))
+    delete_button = driver.find_elements('css selector', '[data-testid="draftItem__deleteDraftTrigger"]')
+    print(len(delete_button))
+    for index, desc in enumerate(missing_description):
+        print('first deleter')
+        missing_description = driver.find_elements('css selector', '[data-testid="draftItem__missingFields"]')
+        print(len(missing_description))
+        driver.execute_script("arguments[0].scrollIntoView(true)",missing_description[0])
+        if 'description' in missing_description[0].text:
+            delete_button = driver.find_elements('css selector', '[data-testid="draftItem__deleteDraftTrigger"]')
+            print(index)
+            missing_description = driver.find_elements('css selector', '[data-testid="draftItem__missingFields"]')
+            driver.execute_script("arguments[0].scrollIntoView(true)",delete_button[0])
+            driver.execute_script("arguments[0].click();", delete_button[0])
+            time.sleep(1)
+            delete_draft = driver.find_element('css selector', '[data-testid="confirmation--modal__confirm"]')
+            delete_draft.click()
+            time.sleep(2)
+        else:
+            scroll_down
+        missing_description = driver.find_elements('css selector', '[data-testid="draftItem__missingFields"]')
+        print('length', len(missing_description))
+            
+
+start_up()
+draft_deleter()
