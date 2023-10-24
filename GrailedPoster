@@ -1,77 +1,174 @@
-from msilib.schema import Condition
-from tokenize import Name
-from turtle import color
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import Select
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+import requests
+import sqlite3
 import time
+from text_parser import grailed_pants_category_list, gender_list, tops_bottoms_outerwear_footwear_for_grailed, grailed_brand_list, grailed_category_list, condition_list, size_list, grailed_color_list, general_description
+from Extract_info_from_excel import excel_total_titles, excel_total_price, image_list
 
-driver = webdriver.Chrome("D:/chromedriver.exe")
+#this import above gives me access to info from text_parser
+#muse use and identify where imports are needed
+
+# from text_parser.py import category_list
+#figure out how to import functions from other files
+chrome_options = Options()
+chrome_options.add_experimental_option("detach", True)
+driver = webdriver.Chrome("D:\\Selenium_python2\\chromedriver.exe", chrome_options=chrome_options)
 driver.get("https://www.grailed.com/sell")
 time.sleep(2)
 
-short_sleeve = "Short Sleeve T-Shirts"
-def sub_category(item):
+post_as_draft = False
+#got to make a catgory if else like I did with the shirts, for category in terms of clohtes,
+# can work on
+item_tags = '#Vintage #old #90\'s #used #thrifted #wornbyplayboicarti #sundayservice #grailed #depop #y2k'
+count = 91
+def men_or_women(men_or_women):
+    dep_cat = driver.find_elements('xpath', '//*[contains(@class, "SellFormInput CustomDropDown-module__input___bJK4I")]')
+    time.sleep(2)
+    driver.execute_script("arguments[0].click();", dep_cat[0])
+    department_options = driver.find_elements('xpath', '//*[contains(@class, "Option-module__option___jXhrC DepartmentOptions-module__department___03QZy")]')
+    if men_or_women == 'WMN':
+        department_options[1].click()
+    else:
+        department_options[0].click()
+
+def tops_or_bottoms_or_etc(item_tags):
+    print('item tags:', item_tags)
+    top_bottom = driver.find_elements('xpath', '//*[@data-cy="category-option"]')
+    if item_tags == "Tops":
+        top_bottom[0].click()
+    elif item_tags == "Bottoms":
+        top_bottom[1].click()
+    elif item_tags == "Outerwear":
+        top_bottom[2].click()
+    elif item_tags == "Footwear":
+        top_bottom[3].click()
+    elif item_tags == 'Accessories':
+        top_bottom[5].click()
+
+def sub_category(item, bottoms, category_option):
+    print('item ' + item)
     sub_category_option = item
+    if sub_category_option == 'T-Shirts':
+        sub_category_option = 'Short Sleeve T-Shirts'
+    elif sub_category_option in ['Sweatshirts', 'Hoodie']:
+        sub_category_option = 'Sweatshirts & Hoodies'
     sub_category_lists = driver.find_elements('xpath', ".//*[@class='CustomDropDown-module__dropDownItems___7n7Mi']/span")
     i = 0
+    print(sub_category_option)
+    print('bottoms')
+    print(bottoms)
+    
     for x in sub_category_lists:
+        if category_option == 'Bottoms':
+            sub_category_option = bottoms
+            print(sub_category_option)
         if x.text == sub_category_option:
             driver.find_element('xpath', ".//*[@class='CustomDropDown-module__dropDownItems___7n7Mi']/span[" + str(i + 1) + "]").click()
             break
-        i += 1 
-clothes_designer = "Disney"
+        i += 1
+
 def designer_field(designer):
-    option_to_select = designer  # change the option you want to select
-    designer_txt_field = driver.find_element('xpath', '//*[@id="designer-autocomplete"]')
-    designer_txt_field.click()
-    designer_txt_field.send_keys("Ad")  # you have to enter some character to search and select the value of the string 'option_to_select'
-    time.sleep(1)
+    global post_as_draft
+    if designer == 'American Vintage':
+        designer == 'Vintage'
+    if post_as_draft == True:
+        pass
+    else:
+        option_to_select = designer  # change the option you want to select
+        designer_txt_field = driver.find_element('xpath', '//*[@id="designer-autocomplete"]')
+        driver.execute_script("arguments[0].click();", designer_txt_field)
+        time.sleep(1)
+        designer_txt_field.send_keys(designer)  # you have to enter some character to search and select the value of the string 'option_to_select'
+        time.sleep(6)
+        designer_txt_field.click()
+        option_list = driver.find_elements('xpath', "//*[contains(@class, 'Designer-module__autocomplete___fCmzc')]")
+        i = 0
+        for option in option_list:
+            if option.text == option_to_select:
+                option.click()
+            # try:
+                # if x.text == option_to_select:
+                #     print(x.text)
+                #     driver.find_element('xpath', ".//*[@class='Designer-module__autocomplete___fCmzc']/li[" + str(i + 1) + "]").click()
+                #     break
+                # i += 1
+            # except:
+                post_as_draft = True
+                print('designer failure')
 
-    option_list = driver.find_elements('css selector', ".Designer-module__autocomplete___fCmzc li")
-    time.sleep(1)
+def size(clothes_size):
+    global post_as_draft
+    try:
+        if clothes_size == 'XXS':
+            clothes_size = 'US XXS / EU 40'
+        elif clothes_size == 'XS':
+            clothes_size = 'US XS / EU 42 / 0'
+        elif clothes_size == 'S':
+            clothes_size = 'US S / EU 44-46 / 1'
+        elif clothes_size == 'M':
+            clothes_size = 'US M / EU 48-50 / 2'
+        elif clothes_size == 'L':
+            clothes_size = 'US L / EU 52-54 / 3'
+        elif clothes_size == 'XL':
+            clothes_size = 'US XL / EU 56 / 4'
+        elif clothes_size == '2XL':
+            clothes_size = 'US XXL / EU 58 / 5'
+        print(clothes_size)
+        select = Select(driver.find_element('xpath', '//*[@id="SellForm"]/div/div[2]/form/div[1]/div/div[2]/select'))
+        
+        try:
+            select.select_by_visible_text(clothes_size)
+        except:
+            updated_clothes_size = "US " + str(clothes_size)
+            eu_num_for_pants = int(clothes_size) + 16 
+            print(eu_num_for_pants)
+            updated_clothes_size = updated_clothes_size + " / EU " + str(eu_num_for_pants)
 
-    i = 0
-    for x in option_list:
-        if x.text == option_to_select:
-            driver.find_element('xpath', ".//*[@class='Designer-module__autocomplete___fCmzc']/li[" + str(i + 1) + "]").click()
-            break
-        i += 1
+            print(updated_clothes_size)
+            select.select_by_visible_text(updated_clothes_size)
+    except:
+        print('size could not be chosen')
+        post_as_draft = True
 
-clothing_size = 'US XXL / EU 58 / 5'
-def choosing_size(size):
-    option_to_select = size  # change the option you want to select
-    designer_txt_field = driver.find_element('xpath', '//*[@id="designer-autocomplete"]')
-    designer_txt_field.click()
-    designer_txt_field.send_keys("Ad")  # you have to enter some character to search and select the value of the string 'option_to_select'
-    time.sleep(1)
+def condition(cond):
+    select = Select(driver.find_element('xpath', '//*[@id="SellForm"]/div/div[2]/form/div[4]/select'))
+    if cond == 'New':
+        item_condition = 'New/Never Worn'
+    elif cond == 'Damaged':
+        item_condition = 'Very Worn'
+    else:
+        item_condition = 'Used'
+    select.select_by_visible_text(item_condition)
 
-    option_list = driver.find_elements('css selector', ".Designer-module__autocomplete___fCmzc li")
-    time.sleep(1)
+def shipping_price():
+    driver.find_element('xpath', '//*[@id="MyOwnShippingOptionWrapper"]').send_keys()
 
-    i = 0
-    for x in option_list:
-        if x.text == option_to_select:
-            driver.find_element('xpath', ".//*[@class='SizeSelect-module__selectMenu___egH5d']/li[" + str(i + 1) + "]").click()
-            break
-        i += 1
-
-description = 'poop'
 def item_name(name):
-    driver.find_element('xpath', '//*[@id="SellForm"]/div/div[2]/form/div[2]/input').send_keys(name)
+    global post_as_draft
+    title_to_put_name = driver.find_element('xpath', '//*[@id="SellForm"]/div/div[2]/form/div[2]/input')
+    if len(name) > 60:
+        print('name too long')
+        title_to_put_name.send_keys(name)
+        post_as_draft = True
+    else:
+        title_to_put_name.send_keys(name)
 
-color_of_item = 'poop color'
 def item_color(color):
     driver.find_element('xpath', '//*[@id="color-autocomplete"]').send_keys(color)
 
-item_description = 'idk just buy it'
 def add_description(desc):
     driver.find_element('xpath', '//*[@id="SellForm"]/div/div[2]/form/div[5]/textarea').send_keys(desc)
 
-item_tags = '#Vintage #old #nascar'
 def adding_tags(tags):
     driver.find_element('xpath', '//*[@id="SellForm"]/div/div[2]/form/div[7]/div[2]/ul/li/input').send_keys(tags)
 
-item_price = '25'
 def add_price(price):
     driver.find_element('xpath', '//*[@id="SellForm"]/div/div[2]/form/div[8]/div[2]/div[1]/div[1]/label/input').send_keys(price)
 
@@ -81,92 +178,381 @@ def ship_switch():
 def smart_price_activation():
     driver.find_element('xpath','//*[@id="SellForm"]/div/div[2]/form/div[8]/div[2]/div[1]/div[2]/label/span[2]').click()
 
+pstart = (count * 4 )
+#create some sort of loop so this can all just be one loop, with an iteration variable that counts up to 4 every time, which also increase the amount of remove_buttons needing
+# to be visible after every time, which also allows it to wait until the remove_buttons are visible somehow with the remove_button
+def pic_adding():
+    global pstart
+    pic_slot = 0
+    total_pics = 0
+    expected_buttons = 1
+    current_images = 'folder7'
+    pictures_slots = driver.find_element('xpath', '//*[contains(@class, "SiteLink-module__siteLink___r70gA Footer-module__siteLink___70BMa")]')
+    driver.execute_script("arguments[0].scrollIntoView(true)", pictures_slots)
+    while total_pics < 4:
+        print('new pic')
+        pic_input = driver.find_element('xpath', '//*[@id="photo_input_' + str(pic_slot) + '"]')
+        pic_input.send_keys("D:\\Selenium_python2\\Pic_folder\\" + current_images +"\\" + str(image_list[pstart]))
+        pstart += 1
+        pic_slot += 1
+        remove_buttons = driver.find_elements('xpath', '//*[contains(@class, "remove-button")]')
+        while len(remove_buttons) < expected_buttons:
+            remove_buttons = driver.find_elements('xpath', '//*[contains(@class, "remove-button")]')
+            time.sleep(2)
+        expected_buttons += 1
+        total_pics += 1
 
-def shipping_price():
-    driver.find_element('xpath', '//*[@id="MyOwnShippingOptionWrapper"]').send_keys('5')
+def db_pic_adding():
+    global pstart
+    global db_image_list
+    pic_slot = 0
+    total_pics = 0
+    expected_buttons = 1
+    current_images = 'folder7'
+    pictures_slots = driver.find_element('xpath', '//*[contains(@class, "SiteLink-module__siteLink___r70gA Footer-module__siteLink___70BMa")]')
+    driver.execute_script("arguments[0].scrollIntoView(true)", pictures_slots)
+    while total_pics < 4:
+        print('new pic')
+        pic_input = driver.find_element('xpath', '//*[@id="photo_input_' + str(pic_slot) + '"]')
 
-def option1():
-    driver.find_element('xpath', '//*[@id="app"]/div[7]/div/div/div/div[2]/div/div/p[2]/a').click()
+
+        for image in db_image_list:
+
+            pic_input.send_keys(image)
+            pic_slot += 1
+        remove_buttons = driver.find_elements('xpath', '//*[contains(@class, "remove-button")]')
+        while len(remove_buttons) < expected_buttons:
+            remove_buttons = driver.find_elements('xpath', '//*[contains(@class, "remove-button")]')
+            time.sleep(2)
+        expected_buttons += 1
+        total_pics += 1
+                
+def publish_or_draft_button():
+    global post_as_draft
+    if post_as_draft == False:
+        post_button = driver.find_element('xpath', '//*[@id="SellForm"]/div/div[2]/form/div[11]/div/button[2]')
+        post_button.click()
+    elif post_as_draft == True:
+        draft_button = driver.find_element('xpath', '//*[contains(@class, "Button-module__button___fE9iu Button-module__large___wYagY Button-module__secondary___gYP5i ActionTray-module__action___4eHA6")]')
+        draft_button.click()
+
+def next_post():
+    driver.find_element('xpath', '//*[@id="globalHeaderWrapper"]/div/div[2]/div[1]/a/button/p').click()
+    print('first clicked')
+    time.sleep(3)
+    new_listing = WebDriverWait(driver, 40).until(EC.presence_of_element_located(('xpath', "//*[contains(@class, 'Button_button__3-u4P Button_small__1-Wax Button_primary__24KWs NewListingButton_button__2fZUE')]")))
+    new_listing.click()
+
+def checking(counting):
+    print('checking function')
+    print(excel_total_titles[counting])
+    print(grailed_category_list[counting])
+    print(grailed_brand_list[counting])
+    print(condition_list[counting])
+    print(size_list[counting])
+    print(excel_total_price[counting])
+    print('   ')
+
+def checking_all_match():
+    if len(excel_total_titles) == len(grailed_category_list) and len(grailed_brand_list) and len(condition_list) and len(size_list) and len(excel_total_price):
+        print('This is all good')
+    else:
+        print('Fix your stuff')
+        print('grailed_category_list ' + str(len(grailed_category_list)))
+        print('grailed_key_list ' + str(len(grailed_brand_list)))
+        print('grailed_condition_list ' + str(len(condition_list)))
+        print('grailed_size_list ' + str(len(size_list)))
+        print('excel_total_price ' + str(len(excel_total_price)))
+
+grailed_overall_list = []
+def combining_lists_for_grailed():
+    global excel_total_titles
+    global grailed_category_list
+    global grailed_brand_list
+    global size_list
+    global condition_list
+    global grailed_color_list
+    global excel_total_price
+    z = zip(excel_total_titles, grailed_category_list, grailed_brand_list, size_list, 
+            condition_list, excel_total_price, grailed_color_list)
+    for item in z:
+        grailed_overall_list.append(item)
+        # print(item)
+
+excel_titles = excel_total_titles[count:] #can add a splice if need to adjust items
+def grailed_start_up():
     time.sleep(2)
-    driver.find_element('xpath', '//*[@id="app"]/div[7]/div/div/div/div[2]/div/div/button[4]').click()
+    log_in_button = driver.find_element('xpath', '//*[@id="app"]/div[7]/div/div/div/div[2]/div/div/p[2]/a')
+    log_in_button.click()
+    time.sleep(3)
+    # log_in_button2 = driver.find_element('xpath', '//*[contains(@class, "Button-module__button___fE9iu Button-module__large___wYagY Button-module__primary___11+Ra AuthModal-Button _email _login")]')
+    log_in_button2 = driver.find_element('css selector', '[data-cy="login-with-email"]')
+    log_in_button2.click()
+    time.sleep(2)
     google_email = driver.find_element('xpath', '//*[@id="email"]')
     google_email.send_keys("argelarroyo2001@gmail.com")
     driver.find_element('xpath', '//*[@id="password"]').send_keys('Pineappleguy305')
     time.sleep(1)
     driver.find_element('xpath', '//*[@id="app"]/div[7]/div/div/div/div[2]/div/div/form/button').click()
-    time.sleep(5)
 
-    title = driver.find_element('css selector', ".SellFormHeader-Title")
-    driver.execute_script("arguments[0].scrollIntoView(true)",title)
+def depop_database_extractor():
+    global id_num
+    global db_title, db_brand, db_size, db_color1, db_condition, db_price, db_men_or_wmn, db_category, db_gen_cat, db_images, db_image_list
+    conn = sqlite3.connect("D:\Selenium_python2\Depop_database.db")
 
-    driver.find_element('xpath', '//*[@id="SellForm"]/div/div[2]/form/div[1]/div/div[1]/div[1]/div/input').click()
-    time.sleep(2)
-    #Start of entering clothing details
-    #picking type of clothing, men or woman
-    driver.find_element('xpath', '//*[@id="SellForm"]/div/div[2]/form/div[1]/div/div[1]/div[1]/div/div/span[1]').click()
-    time.sleep(2)
-    #selects the main category
-    driver.find_element('xpath', '//*[@id="SellForm"]/div/div[2]/form/div[1]/div/div[1]/div[1]/div/div/span[2]').click()
-    time.sleep(2)
+    # Create a new cursor to execute queries against the database
+    cursor = conn.cursor()
 
-    # Sub-category field
-    sub_category(short_sleeve)
+    # query = "SELECT dp_title FROM depop_inventory WHERE id = 1;"
+    # Execute the SQL query
+    db_title = cursor.execute("SELECT dp_title FROM depop_inventory WHERE id = " + str(id_num) + ";").fetchone()
+    print(db_title[0]) 
 
-    # Designer field
-    designer_field(clothes_designer)
+    db_brand = cursor.execute("SELECT dp_brand FROM depop_inventory WHERE id = " + str(id_num) + ";").fetchone()
+    print(db_brand[0])
 
-    # Size field
-    # choosing_size(clothing_size)
+    db_size = cursor.execute("SELECT dp_size FROM depop_inventory WHERE id = " + str(id_num) + ";").fetchone()
+    print(db_size[0])
 
-    # Item Name
-    item_name(description)
+    db_color1 = cursor.execute("SELECT dp_color1 FROM depop_inventory WHERE id = " + str(id_num) + ";").fetchone()
+    print(db_color1[0])
 
-    # Item Color
-    item_color(color_of_item)
+    db_price = cursor.execute("SELECT dp_price FROM depop_inventory WHERE id = " + str(id_num) + ";").fetchone()
+    print(db_price[0])
 
-    #Item description
-    add_description(item_description)
+    db_condition = cursor.execute("SELECT dp_condition FROM depop_inventory WHERE id = " + str(id_num) + ";").fetchone()
+    print(db_condition[0])
 
-    #adding tag
-    adding_tags(item_tags)
+    db_men_or_wmn = cursor.execute("SELECT dp_men_or_wmn FROM depop_inventory WHERE id =  " + str(id_num) + ";").fetchone()
+    print(db_men_or_wmn[0])
 
-    # Adding Price
-    add_price(item_price)
+    db_category = cursor.execute("SELECT dp_category FROM depop_inventory WHERE id = " + str(id_num) + ";").fetchone()
+    print(db_category[0])
 
-    #turning off smart price
-    smart_price_activation()
+    db_gen_cat = cursor.execute("SELECT dp_gen_category FROM depop_inventory WHERE id = " + str(id_num) + ";").fetchone()
+    print(db_gen_cat[0])
 
-    # Switch to my own shipping
-    ship_switch()
+    db_images = cursor.execute("SELECT dp_images FROM depop_inventory WHERE id = " + str(id_num) + ";").fetchone()
+    db_image_list = db_images[0].split('; ')
+    print(len(db_image_list))
+    for image in db_image_list:
+        print(image)
+        print('yuh yuh')
+        response = requests.get(image)
+        open('picture.jpg', 'wb').write(response.content)
 
-    #change shipping price
-    shipping_price()
+        # Upload the picture
+        upload_url = 'https://example.com/upload'
+        files = {'picture': open('picture.jpg', 'rb')}
+        response = requests.post(upload_url, files=files)
 
-option1()
+        # Check the response
+        if response.status_code == 200:
+            print('Picture uploaded successfully!')
+        else:
+            print('Picture upload failed')
+    # print(images[0])
+    # Fetch the results from the database
+    # results = cursor.fetchall()
+    
+    # for row in results:
+    #     print(row[0])
 
-# 
+    # Close the cursor and the database connection
+    cursor.close()
+    conn.close()
+    
+def grailed_poster():
+    global title
+    global count
+    print('Starting Grailed Poster')
+    checking_all_match()
+    grailed_start_up()
 
-#How would I create posts?
-#use the parsing text I created already?
-#yeah most likely, no use just making like separate modules for each category, size, etc,
-#I just need to make a script for shirts,sweatshirts etc
-# , then if else for the size,
-# enter Item Name
-# Item color
-# Item Condition
-# description
-# general tags for all,
-# click my own shipping,
-# then add photos from gmail, 
-# create new draft
-# then boom done.
-# if this works smoothly, I can probably just do this for the depop as well, fuck the bulk listing if size is going to be a bitch about it, I still have the layout and everything, I just have to figure how to bypass the account login info
-# I need to learn how to function through files, to create a big file of all the pics in order, groups of 4#
+    for titlesss in excel_titles:
+        time.sleep(6)
+        
+        title = WebDriverWait(driver, 40).until(EC.presence_of_element_located(('xpath', "//*[contains(@class, 'details-container section')]")))
 
-#so all this is basically complete now, need to gather the images from gmail into a folder, in order,
-#and adjust the size and condition option
-#these would be newly created from just based off pics, so maybe I could create a csv to put them all in and create big titles wih the above layout
-#Then from there need to figure out the depop problem how google sheets isnt reading from the dropdown menu.  SO that is super weird because it should be working
+        pic_adding()
+
+        driver.execute_script("arguments[0].scrollIntoView(true)",title)
+
+        men_or_women(gender_list[count])
+        
+        time.sleep(2)
+        print(tops_bottoms_outerwear_footwear_for_grailed[count])
+        tops_or_bottoms_or_etc(tops_bottoms_outerwear_footwear_for_grailed[count])
+        time.sleep(2)
+
+        print(grailed_category_list[count])
+        print(grailed_pants_category_list[count])
+        print(tops_bottoms_outerwear_footwear_for_grailed[count])
+        sub_category(grailed_category_list[count], grailed_pants_category_list[count], tops_bottoms_outerwear_footwear_for_grailed[count])
+
+        # # Item Name
+        print(excel_total_titles[count])
+        item_name(excel_total_titles[count])
+
+        # # Designer field
+        #brand
+        print(grailed_brand_list[count])
+        designer_field(grailed_brand_list[count])
+
+        # # # Size field
+        print(size_list[count])
+        size(size_list[count])
+
+        # # Item Color
+        print(grailed_color_list[count])
+        item_color(grailed_color_list[count])
+
+        # #item condition
+        print(condition_list[count])
+        condition(condition_list[count])
+
+        # #Item description
+        #     #doesnt need info
+        add_description(general_description)
+
+        # #adding tag
+        #     #doesnt need info
+        adding_tags(item_tags)
+
+        # # Adding Price
+        print(excel_total_price[count])
+        add_price(excel_total_price[count])
+
+        shipping = driver.find_element('xpath', '//*[@id="SellForm"]/div/div[2]/form/div[9]/div[4]/p[1]')
+        driver.execute_script("arguments[0].scrollIntoView(true)",shipping)
+
+        # #turning off smart price
+        # #doesnt need info
+        smart_price_activation()
+        time.sleep(1)
+
+        # # Switch to my own shipping
+        ship_switch()
+        time.sleep(1)
+
+        #clicking the shipping
+        driver.find_element('xpath', '//*[@id="MyOwnShippingWrappermyOwnShipping"]').click()
+      
+        time.sleep(20)
+        publish_or_draft_button()
+        time.sleep(8)
+
+        #go to next post
+        next_post()
+        print('finished ' + str(count))
+        count += 1
+        print('start ' + str(count))
 
 
+def grailed_db_poster():
+    global id_num
+    global db_title, db_brand, db_size, db_color1, db_condition, db_price, db_men_or_wmn, db_category, db_gen_cat, db_images, db_image_list
+    global title
+    global count
+    print('Starting Grailed Poster')
+    checking_all_match()
+    grailed_start_up()
+    id_num = 1
+
+    for titlesss in excel_titles:
+        depop_database_extractor()
+        time.sleep(6)
+        
+        title = WebDriverWait(driver, 40).until(EC.presence_of_element_located(('xpath', "//*[contains(@class, 'details-container section')]")))
+
+        pic_adding()
+
+        driver.execute_script("arguments[0].scrollIntoView(true)",title)
+        print(db_men_or_wmn[id_num])
+        men_or_women(db_men_or_wmn[id_num])
+        
+        time.sleep(2)
+        print(tops_bottoms_outerwear_footwear_for_grailed[id_num])
+        tops_or_bottoms_or_etc(tops_bottoms_outerwear_footwear_for_grailed[id_num])
+        time.sleep(2)
+
+        print(db_category[id_num])
+        print(grailed_pants_category_list[id_num])
+        print(tops_bottoms_outerwear_footwear_for_grailed[id_num])
+        sub_category(grailed_category_list[id_num], grailed_pants_category_list[id_num], tops_bottoms_outerwear_footwear_for_grailed[id_num])
+
+        # # Item Name
+        print(db_title[id_num])
+        item_name(db_title[id_num])
+
+        # # Designer field
+        #brand
+        print(db_brand[id_num])
+        designer_field(db_brand[id_num])
+
+        # # # Size field
+        print(db_size[id_num])
+        size(db_size[id_num])
+
+        # # Item Color
+        print(db_color1[id_num])
+        item_color(db_color1[id_num])
+
+        # #item condition
+        print(db_condition[id_num])
+        condition(db_condition[id_num])
+
+        # #Item description
+        #     #doesnt need info
+        add_description(general_description)
+
+        # #adding tag
+        #     #doesnt need info
+        adding_tags(item_tags)
+
+        # # Adding Price
+        print(db_price[id_num])
+        add_price(db_price[id_num])
+
+        shipping = driver.find_element('xpath', '//*[@id="SellForm"]/div/div[2]/form/div[9]/div[4]/p[1]')
+        driver.execute_script("arguments[0].scrollIntoView(true)",shipping)
+
+        # #turning off smart price
+        # #doesnt need info
+        smart_price_activation()
+        time.sleep(1)
+
+        # # Switch to my own shipping
+        ship_switch()
+        time.sleep(1)
+
+        #clicking the shipping
+        driver.find_element('xpath', '//*[@id="MyOwnShippingWrappermyOwnShipping"]').click()
+      
+        time.sleep(20)
+        publish_or_draft_button()
+        time.sleep(8)
+
+        #go to next post
+        next_post()
+        print('finished ' + str(count))
+        id_num += 1
+        print('start ' + str(count))
+
+grailed_poster() 
+# depop_database_extractor()
+# grailed_db_poster()
+
+
+#only issue with this is the picutres are not loading
+
+#TO DO LIST FOR THIS POSTER
+# If text too long, add the rest of it into grailed description?
+# Error catching if category option doesnt find an option and leave it blank not allowing for the size to be chosen
+# --- maybe put it so that size gets entered first and if the size return an error, indicating it couldnt choose one, then it can skip designer and post this as a draft
+
+# make a code for the script to proceed with the next pic uploading as soon as the exit screen for that one becomes visible, or if it doesnt after like 60, it goes to the next, or if it doenst
+# even upload the pic like how it did to that one shirt and only uploads 3 pics, or just not 4, it can detect that too, mark it as a draft, and move on
+
+#MAKE LIST OF BANDS OR JUST A FILTER FOR THE WORD BAND FOR BAND TEES
 
