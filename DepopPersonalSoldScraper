@@ -1,0 +1,142 @@
+#this program not really needed, since scraping this way using only solds doesnt give you much info, just title and pic
+
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import Select
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+import time
+import requests
+from selenium.common.exceptions import NoSuchElementException
+import codecs
+import re
+import json
+import sqlite3
+import emoji
+from PyQt5.QtWidgets import QApplication
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import traceback
+account_name = 'isellclothes2001'
+url = 'https://www.depop.com/' + account_name + '/'
+# results = requests.get(url)
+
+chrome_options = Options()
+chrome_options.add_experimental_option("detach", True)
+driver = webdriver.Chrome("D:\\Selenium_python2\\chromedriver.exe", chrome_options=chrome_options)
+scroll_down = driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+total_titles = 0
+ovr_listings = 0
+count = 0
+
+driver.get(url)
+
+def start_up(email, pw):
+    cookies_button = driver.find_element('css selector', '[data-testid="cookieBanner__acceptAllButton"]')
+    cookies_button.click()
+    # driver.find_element('xpath', '//*[@id="__next"]/div/div[3]/div[2]/button[2]').click()
+    time.sleep(2)
+    driver.find_element('css selector', '[data-testid="navigation__login"]').click()
+    time.sleep(2)
+    username = WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[@id="username"]')))
+    username.send_keys(email)
+    time.sleep(2)
+    password = driver.find_element('css selector', '[data-testid="password"]')
+    password.send_keys(pw)
+
+    log_in_button = driver.find_element('css selector', '[data-testid="login__cta"]')
+    log_in_button.click()
+    time.sleep(20)# time for captcha #whether or not 2fa is on so use if statement
+    
+    sell_button = driver.find_element('xpath', '//*[contains(@class, "NavLinkText-sc-")]')
+    sell_button.click()
+    time.sleep(2)
+    sold_button = driver.find_element('xpath', '//*[contains(@class, "sellerHubNavigation__itemLink--sold")]')
+    sold_button.click()
+    time.sleep(3)
+
+def each_sold_post():
+    #enter scroll_down_script or while True 
+    sold_posts = driver.find_elements('xpath', '//*[contains(@class, "ListRowstyles__Row-")]')
+    print(len(sold_posts))
+    for posts in sold_posts:
+        sold_posts[count].click()
+
+        sold_post_info = driver.find_elements('xpath', '//*[contains(@class, "Receiptstyles__")]')
+        date_sold = sold_post_info[0]
+
+        title = driver.find_elements('xpath', '//*[contains(@class, "styles__Description-sc-__)]')
+        print(title.text)
+
+        price_brand_and_size = driver.find_element('xpath', '//*[contains(@class, "styles__Summary-sc-__")]')
+        price_brand_and_size.get_attribute('innerHTML')
+        
+        revenue = driver.find_element('xpath', '//*[contains(@class, "ProductPaymentDetailsstyles")]')
+        print(revenue[-1].text)
+
+        close_button = driver.find_element('css selector', '[data-testid="receiptDrawer__closeButton"]')
+        close_button.click()
+    sqlite_database_for_depop(dp_title, dp_discount, dp_date, dp_revenue)
+
+
+depop_title_list = []
+all_titles = []
+def hashtag_parser(word):
+    global dp_title, dp_revenue, dp_discount, dp_size, dp_date
+    ind_title = []
+    dp_title = []
+    dp_revenue = []
+    dp_discount = []
+    dp_size = []
+    dp_date = []
+    # time.sleep(2)
+    try: #split will only work with mine, can also change this to make it so that if others choose to have a description like this it will automatically take this off,
+        #but if they have multiple descriptions, they can add that too.
+        wordd = word.split("PLEASE READ CAREFULLY!! Some items may have unlisted markings, but for the most part all marking would be listed. These clothes are often old and used, so tend to not be in pristine condition. Most items that are listed here will by default be used, unless stated otherwise. Items have not been washed so we also highly recommend that you wash before putting it on.  All items have been handpicked by us. Thank you for choosing to support us at RealVintage._ and if there is anything we can do to make your experience better feel free to send us a message! We also give large discounts if purchasing stuff in bulk.")
+    except:
+        wordd = word
+    for letter in wordd:
+        if letter != '#' or ',' or '\n' or "PLEASE":
+            ind_title.append(letter)
+        else:
+            overall_title = ''.join(ind_title)
+            print(overall_title)
+
+            if overall_title not in all_titles:
+                all_titles.append(overall_title)
+            break
+    title =''.join(ind_title)
+    item_title = title.split('#')[0].strip()
+    title_of_item = item_title.replace('\n', ' ')
+    try:
+        title_of_item = title_of_item.encode('ascii', 'ignore').decode('unicode_escape')
+        depop_title_list.append(title_of_item)
+        print(title_of_item)
+    except:
+        depop_title_list.append(title_of_item)
+        print(title_of_item)
+    return title_of_item
+    
+    
+
+def sqlite_database_for_depop():
+    
+    connection = sqlite3.connect('D:\\Selenium_python2\\Depop_database.db')
+    cursor = connection.cursor()
+    
+    # Create a new table with an auto-incrementing primary key
+    #create command to find the correspoding title that matches with it, then insert this extra info
+    #also find out how to add argument to change the database name
+
+    # Execute a SQL query to update the table based on the title matching
+    query_str = 'UPDATE dp_personal_sold SET dp_discount_price = ?, dp_date = ?, dp_revenue = ? WHERE title = ?;'
+    cursor.execute(query_str, (dp_discount, dp_date, dp_revenue, dp_title))
+    
+    connection.commit()
+    connection.close()
+
+
+start_up('isellclothes2001@gmail.com', 'F1979')
+each_sold_post()
+# sqlite_database_for_depop()
