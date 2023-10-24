@@ -1,0 +1,305 @@
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import Select
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.action_chains import ActionChains
+import time
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+chrome_options = Options()
+chrome_options.add_experimental_option("detach", True)
+driver = webdriver.Chrome("D:\\Selenium_python2\\chromedriver.exe", chrome_options=chrome_options)
+driver.get("https://www.depop.com/products/create/") # to take me to sold
+wait = WebDriverWait(driver, 20)
+action_chains = ActionChains(driver)
+
+# driver.maximize_window()
+#started at count 150, but I think the counts are just slightly off somewho, the total lengths of posts im getting for each time is different
+#962, 963, 964, 977, 958 etc
+#start at 220, and work on identifying text chat log, to avoid spamming customer
+count = 0
+def start_up(realvintage_or_isellclothes):
+    time.sleep(2)
+    driver.find_element('xpath', '//*[@id="__next"]/div/div[3]/div[2]/button[2]').click()
+    time.sleep(2)
+    driver.find_element('xpath', '//*[@id="mainNavigation"]/li[4]/a').click()
+    time.sleep(2)
+
+    all_text = driver.find_element('xpath', "/html/body").text
+    if "Don't have an account?" in all_text:
+        pass
+    else:
+        print('log in button')
+        login_button = driver.find_element('css selector', '[data-testid="buttonLink"]')
+        login_button.click()
+
+    time.sleep(2)
+    username = WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[@id="username"]')))
+    if realvintage_or_isellclothes == 'rv':
+        username.send_keys('argelarroyo2001@gmail.com')
+        driver.find_element('xpath', '//*[@id="password"]').send_keys('Pineappleguy305') 
+    elif realvintage_or_isellclothes == 'isc':
+        username.send_keys('isellclothes2001@gmail.com') #2 username
+        driver.find_element('xpath', '//*[@id="password"]').send_keys('Fernanda*1979') #2 password
+
+    #clicking login button
+    driver.find_element('xpath', '//*[@id="main"]/div[3]/form/button').click()
+    time.sleep(20)
+
+    #sell button
+    wait = WebDriverWait(driver, 10)
+    sell_button = wait.until(EC.element_to_be_clickable(('xpath', '//*[@id="mainNavigation"]/li[2]/a')))
+    sell_button.click()
+
+    #sold items button
+    sold_button = wait.until(EC.element_to_be_clickable(('css selector', '[data-testid="sellerHubNavigation__itemLink--sold"]')))
+    sold_button.click()
+    
+    time.sleep(3)
+    #shipped button
+    shipped = wait.until(EC.element_to_be_clickable(('css selector', '[data-testid="shipping-status-tabs_shipped-label"]')))
+    time.sleep(2)
+    shipped.click()
+
+def scroll_down_script():
+    time.sleep(3)
+    zoom_level = 1.25
+    driver.execute_script(f"document.body.style.zoom = '{zoom_level}'")
+    print('zoomed out')
+    last_height = driver.execute_script("return document.body.scrollHeight")
+    while True:
+        # Scroll down to the bottom of the screen
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        # Wait for the page to load
+        time.sleep(5)
+        new_height = driver.execute_script("return document.body.scrollHeight")
+        if new_height == last_height:
+            print('the end of scrolling')
+            break
+        last_height = new_height
+
+def each_post(): #started with 150
+    global count
+    global refund
+    global skip_rest_of_code
+    print("starting item count" + str(count))
+    time.sleep(10)
+    print('reading all posts')
+    all_post = driver.find_elements('xpath', '//*[contains(@class, "ListRow-styles__Row")]') 
+    print('total post' + str(len(all_post)))
+    all_posts = all_post[count:]
+    print('length of posts')
+    print(len(all_posts))
+    for i, post in enumerate(all_posts):
+        sold_date = driver.find_elements('css selector', '[type="caption1"]')
+        sold_date = sold_date[17:]
+        sold_date = sold_date[i*2]
+        sold_date_text = sold_date.text
+        sold_date_text = sold_date_text.replace(' days ago', '')
+        try:
+            sold_date_text = int(sold_date_text)
+            if sold_date_text < 9:
+                count += 1
+                continue
+        except:
+            pass
+        print('moving on')
+        driver.execute_script("arguments[0].scrollIntoView(true)",all_post[count])
+        driver.execute_script('arguments[0].click();', all_post[count])
+        time.sleep(2)
+        # grabbing_item_title()
+        refunded_payment()
+        if refund == 0:
+            time.sleep(2)
+            my_feedback()
+            if skip_rest_of_code == False:
+                cust_feedback()
+        elif refund == 1:
+            print('item has been refunded')
+        print("ending count #" + str(count))
+        time.sleep(2)
+        count += 1
+
+
+
+def grabbing_item_title():
+    try:
+        item_title = driver.find_element('xpath' ,'//*[@id="main"]/div[3]/aside/div[2]/div/div[2]/section/div/div/div/p')
+        title_text = item_title.getText()
+        print(title_text)
+        print('title 1')
+    except:
+        try:
+            title_of_item = driver.find_element('xpath', '//*[@id="main"]/div[3]/aside/div[2]/div/div[2]/section/div/div/div/p/text()')
+            print(title_of_item.text)                    
+            print('title 2')
+        except:
+            print('title failed')
+
+first_phrase_list = ['Hey, just wanted to check in and make sure you received your item!', 'Hey, just wanted to check in and see how you liked your item!', "Hey, Just wanted to check in and see if you received your item!", "Hey, Just wanted to check in and see if you received your item!"]
+def cust_feedback():
+    global customer_response_length
+    global count
+    text_messages_list = []
+    try:
+    # Find the element containing the text
+        customer_feedback = driver.find_element('xpath', "//*[contains(text(), 'left you feedback:')]")
+        customer_feedback
+        # print("YES Customer Feedback")
+    except:
+        time.sleep(3)
+        # print("NO Cust Feedback")
+        message_button = wait.until(EC.element_to_be_clickable(('xpath', '//*[contains(@class, "styles__MessageButton")]')))
+        message_button = driver.find_element('xpath', '//*[contains(@class, "styles__MessageButton")]')
+        driver.execute_script('arguments[0].click();', message_button)
+        time.sleep(3)
+        # print('upcoming text messages in chat log')
+        messages_btwn_customer = driver.find_elements('css selector', '[data-testid="messages__text"]')
+        # if len(messages_btwn_customer) >= 1 :
+        for messages in messages_btwn_customer:
+            text_in_messages = messages.text
+            text_messages_list.append(text_in_messages)
+        # print('ending in chat log')
+        did_i_send_message = next((string2 for string1 in first_phrase_list for string2 in text_messages_list if string1 == string2), None)
+        if did_i_send_message:
+            print('1st message has been sent')   
+            index_position = text_messages_list.index(did_i_send_message)
+            customer_response_length = index_position + 2
+            
+            time.sleep(2)
+            if customer_response_length <= len(text_messages_list):
+                # print('Customer has responded')
+                print(text_messages_list)
+                if "If you could leave me a review, I'd really appreciate it!" in text_messages_list:
+                    print('I also sent the 2nd message')
+                else:
+                    print('message not sent 1')
+                    driver.find_element('css selector', '[data-testid="message--composer__field"]').send_keys("If you could leave me a review, I'd really appreciate it!")
+                    time.sleep(7)
+                    submit_message_button = driver.find_element('css selector', '[data-testid="message--composer__submit"]')
+                    driver.execute_script('arguments[0].click();', submit_message_button)
+
+        else:
+            print('I have not sent the message')
+            time.sleep(3) 
+            
+            #send message to customer
+            driver.find_element('css selector', '[data-testid="message--composer__field"]').send_keys('Hey, just wanted to check in and see how you liked your item!')
+            time.sleep(6) 
+            submit_message_button = driver.find_element('css selector', '[data-testid="message--composer__submit"]')
+            driver.execute_script('arguments[0].click();', submit_message_button)
+
+            time.sleep(4) 
+        close_message_button = driver.find_element('css selector', '[data-testid="modal__close"]')
+        driver.execute_script('arguments[0].click();', close_message_button)
+
+        time.sleep(2)
+        ovr_message_close_button = driver.find_element('css selector', '[data-testid="receiptDrawer__closeButton"]')
+        driver.execute_script('arguments[0].click();', ovr_message_close_button)
+
+def my_feedback():
+    global leaving_feedback_button
+    global skip_rest_of_code
+    time.sleep(2)
+    skip_rest_of_code = False
+    try:
+        full_star_elements = driver.find_elements('xpath, '"//*[contains(text(), 'Full Star')]")
+        print(len(full_star_elements))
+        if len < 2:
+            ovr_message_close_button = driver.find_element('css selector', '[data-testid="receiptDrawer__closeButton"]')
+            driver.execute_script('arguments[0].click();', ovr_message_close_button)
+            skip_rest_of_code = True
+    except:
+        pass
+    if skip_rest_of_code == False:
+        try:
+        # Find the element containing the text
+            feedback_from_me = driver.find_element('xpath', "//*[contains(text(), 'Your Feedback for the buyer:')]")
+            feedback_from_me
+        except:
+            leaving_feedback_button = driver.find_elements('css selector', '[type="button"]')
+            driver.execute_script('arguments[0].click();', leaving_feedback_button[-1])
+            wait.until(EC.element_to_be_clickable(('xpath' ,'//*[contains(@class, "CreateFeedbackModal-styles__ModalContainer")]')))
+            # wait.until(EC.element_to_be_clickable(('css selector' ,'[id^="feedback-star-4"]')))
+            five_star_feedback_elements = driver.find_elements('css selector', '[id^="feedback-star-4"]')
+            # five_star_feedback_elements = driver.find_elements('xpath', '//*[contains(@id, "feedback-star-4")]')
+            time.sleep(2)
+            driver.execute_script("arguments[0].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));", five_star_feedback_elements[0])
+            time.sleep(1)
+
+            all_text = driver.find_element('xpath', "/html/body").text
+            if 'Click on a star to rate your experience with this buyer.' in all_text:
+                print('first click didnt work')
+                driver.execute_script("arguments[0].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));", five_star_feedback_elements[0])
+            sending_feedback_message()
+
+def sending_feedback_message():
+    time.sleep(3)
+    sending_feedback_message = driver.find_element('xpath', '//*[contains(@class, "styles__StyledTextareaAutosize")]')
+    sending_feedback_message.send_keys('Thanks for the purchase!! Hope you enjoy the piece!')
+    time.sleep(2)
+    #might have to adjust this since class varies, or locate by text of leave feedback button
+    submit_feedback = driver.find_elements('css selector', '[type="button"]')
+    driver.execute_script("arguments[0].click();", submit_feedback[-1])
+
+def refunded_payment():
+    global refund
+    time.sleep(3)
+    refund = 0
+    try:
+    # Find the element containing the text
+        payment_refunded = driver.find_element('xpath', "//*[contains(text(), 'Payment refunded on')]")
+        payment_refunded
+        # print("YES Refund")
+        refund = 1
+    except:
+        # print("NO Refund")
+        refund = 0
+
+def sending_myself_email():
+    # Set up the email parameters
+    sender = 'argelarroyo2001@gmail.com'
+    recipient = 'argelarroyo2001@gmail.com'
+    subject = 'Python Autofeedback Error'
+    body = 'Error went wrong'
+
+    msg = MIMEMultipart()
+    msg['From'] = sender
+    msg['To'] = recipient
+    msg['Subject'] = subject
+
+    # Attach the body to the email
+    msg.attach(MIMEText(body, 'plain'))
+
+    # Connect to the SMTP server
+    smtp_server = 'smtp.gmail.com'
+    smtp_port = 587
+    smtp_username = 'argelarroyo2001@gmail.com'
+    smtp_password = 'Pineappleguy305'
+
+    server = smtplib.SMTP(smtp_server, smtp_port)
+    server.starttls()
+    server.login(smtp_username, smtp_password)
+
+    # Send the email
+    text = msg.as_string()
+    server.sendmail(sender, recipient, text)
+
+    # Close the SMTP server
+    server.quit()
+#would just completely ignore these posts
+
+# I can either choose to do it one by one,
+
+
+#///////////////////// MAIN
+#///////////////////// CODE
+start_up('rv') # 'rv' or 'isc'
+scroll_down_script()
+each_post()
+ #FEW ABOVE THE GREEN HAT CASAS
