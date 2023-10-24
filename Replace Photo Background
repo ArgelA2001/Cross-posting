@@ -1,0 +1,510 @@
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import Select
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import time
+import sqlite3
+import traceback
+import shutil
+import os
+from colorama import Fore, Back, Style, init
+import requests
+import json
+
+
+
+
+#GENERAL IDEA
+# scrape all pictures from database 
+# create a scripter to automatically change all the pics with the background of my choosing #currently thinking gray would look really nice
+# change the pics to the ones with background on the actual profile
+# change the image links in the database to these new ones, move to the next
+
+#STEPS STEPS
+# create sql syntax to to into inv dbs and increment id by id by +1, if unable to find, then continue to next increment
+# extract the url and image links
+# download the images to a separate file
+# go to website, photo room and insert first pic 
+# create selenium script to choose background of my choosing
+# download that pic into the correct File
+# repeat this same process with all 4 pics 
+# once all new pics saved into new file, go to post
+# edit and remove all the old pics
+# add new pics in order and save changes,
+# rescrape the picture links and replace these links with the old ones in the database
+# delete those pics from the file
+# move on to next post with increment
+
+init() 
+
+chrome_options = Options()
+chrome_options.add_experimental_option("detach", True)
+driver = webdriver.Chrome("D:\\Selenium_python2\\chromedriver.exe", chrome_options=chrome_options)
+
+driver.get('https://www.depop.com/')
+
+connection = sqlite3.connect('D:\\Selenium_python2\\Depop_database.db')
+cursor = connection.cursor()
+
+account_name_2 = '_realvintage'
+account_name = 'isellclothes2001'
+
+total_accounts = [account_name, account_name_2]
+table_name = 'dp_inv_' + total_accounts[0]
+table_name_2 = 'dp_inv_' + total_accounts[1]
+
+bg_email = 'argelarroyo2001@gmail.com'
+bg_password = 'Fernanda*123'
+
+def removal_log_in(my_email):
+    #sign in
+    WebDriverWait(driver, 60).until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "max-w-full flex items-center justify-center h-12 content-to-edge-spacious-px-600")]')))
+    continue_w_email = driver.find_element('xpath', '//*[contains(@class, "max-w-full flex items-center justify-center h-12 content-to-edge-spacious-px-600")]')
+    continue_w_email.click()
+
+    time.sleep(2)
+    log_in_email = driver.find_element('css selector', '[id="email"]')
+    log_in_email.send_keys(my_email)
+
+    magic_code_button = driver.find_element('xpath', '//*[contains(@class, "max-w-full flex items-center justify-center h-12 content-to-edge-spacious-px-600")]')
+    magic_code_button.click()
+
+    #would have to get magic code button manually but other than that first step it shoudl all be good, unless i want to figure out other way to use code to use existing browser, like a script
+    #would actually have to copy the link address and then paste it, ill leave a little section on the gui to paste this link into, and error button if it worked, 
+    #Would need to enter code to get user input to copy and paste the link
+
+#----------------------------------------------------------------
+    # magic_code_link = '' #would extract this from the text box
+    # driver.execute_script("window.open('{}');".format(magic_code_link))
+    # driver.close()
+    # driver.switch_to.window(driver.window_handles[1])    
+#----------------------------------------------------------------
+    #add option to click the magic code again if needed
+    WebDriverWait(driver, 120).until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "rounded-full h-8 w-8")]')))
+    # time for captcha
+    create_button = driver.find_element('css selector', '[href="/create"]')
+    create_button.click()
+
+def uploading_pics_to_file():
+    id_range = cursor.execute(f'SELECT id FROM {table_name} ORDER BY id DESC LIMIT 1;').fetchone()
+    id_range_num = id_range[0]
+
+    pic_num = 0 #for this code can just identify the last id number created and thats in the file
+
+    # print('pic_num', pic_num)
+    try:
+        for i in range(id_range_num):
+            try:
+                print(pic_num)
+                db_images = cursor.execute(f"SELECT dp_images FROM {table_name} WHERE id = " + str(pic_num) + ";").fetchone()
+                db_image_list = db_images[0].split('; ')
+            except:
+                pic_num += 1
+                continue
+            print('len of image list', len(db_image_list))
+            for i, image in enumerate(db_image_list):
+                filename = f"{pic_num}_picture_{i}_.jpg"
+                filepath = os.path.join("D:\Selenium_python2\Pic_folder\overall_pics", filename)
+
+                # Download the picture
+                response = requests.get(image)
+                open(filepath, 'wb').write(response.content)
+
+                # Upload the picture
+                upload_url = image
+                files = {'picture': open(filepath, 'rb')}
+                response = requests.post(upload_url, files=files)
+
+            pic_num += 1
+    except Exception as e:
+        traceback.print_exc()
+        print(e)
+        print(' uploading is finished ')
+
+pic_images = []
+def removal_editer(the_image_link):
+    try:
+        WebDriverWait(driver, 40).until(EC.visibility_of_element_located(('xpath', '//*[contains(@class, "max-w-full truncate component-semi-strong-500 text-to-leading-500")]')))
+    except:
+        pass
+
+    print(the_image_link)
+    add_photo_button = driver.find_element('css selector', '[accept="image/jpeg,image/png,image/webp"]')
+    add_photo_button.send_keys(the_image_link)
+
+    try:
+        WebDriverWait(driver, 40).until(EC.element_to_be_clickable(('xpath', '//*[contains(@class, "group flex flex-1 items-center space-x-3 p-2")]')))
+    except:
+        pass
+    try:
+        clicking_background_template = driver.find_elements('xpath', '//*[contains(@class, "group flex flex-1 items-center space-x-3 p-2")]')
+        clicking_background_template[-1].click()
+    except:
+        add_photo_button = driver.find_element('css selector', '[accept="image/jpeg,image/png,image/webp"]')
+        add_photo_button.send_keys(the_image_link)
+        try:
+            WebDriverWait(driver, 40).until(EC.element_to_be_clickable(('xpath', '//*[contains(@class, "group flex flex-1 items-center space-x-3 p-2")]')))
+        except:
+            pass
+        clicking_background_template = driver.find_elements('xpath', '//*[contains(@class, "group flex flex-1 items-center space-x-3 p-2")]')
+        clicking_background_template[-1].click()
+
+    time.sleep(1)
+    expand_color_options = driver.find_element('xpath', '//*[contains(@d, "M19 11H13V5C13")]')
+    expand_color_options.click()
+
+    picked_color = 'Emerald' #will later give user option to pick this
+    hex_color = '68A2F5'
+    picking_the_color = driver.find_elements('xpath', '//*[contains(@class, "relative rounded-full box-border")]')
+
+    if picked_color == 'Black':
+        driver.execute_script("arguments[0].scrollIntoView(true);", picking_the_color[1])
+        picking_the_color[1].click()
+    elif picked_color == 'Dark Orange':
+        driver.execute_script("arguments[0].scrollIntoView(true);", picking_the_color[18])
+        picking_the_color[18].click()
+    elif picked_color == 'Bright Orange':
+        driver.execute_script("arguments[0].scrollIntoView(true);", picking_the_color[17])
+        picking_the_color[17].click()
+    elif picked_color == 'Bright Orange':
+        driver.execute_script("arguments[0].scrollIntoView(true);", picking_the_color[16])
+        picking_the_color[16].click()
+    elif picked_color == 'Yellow':
+        driver.execute_script("arguments[0].scrollIntoView(true);", picking_the_color[15])
+        picking_the_color[15].click()
+    elif picked_color == 'Bright Yellow':
+        driver.execute_script("arguments[0].scrollIntoView(true);", picking_the_color[14])
+        picking_the_color[14].click()
+    elif picked_color == 'Lime Green':
+        driver.execute_script("arguments[0].scrollIntoView(true);", picking_the_color[13])
+        picking_the_color[13].click()
+    elif picked_color == 'Green':
+        driver.execute_script("arguments[0].scrollIntoView(true);", picking_the_color[12])
+        picking_the_color[12].click()
+    elif picked_color == 'Emerald':
+        driver.execute_script("arguments[0].scrollIntoView(true);", picking_the_color[11])
+        picking_the_color[11].click()
+    elif picked_color == 'Baby Blue':
+        driver.execute_script("arguments[0].scrollIntoView(true);", picking_the_color[10])
+        picking_the_color[10].click()
+    elif picked_color == 'Light Blue':
+        driver.execute_script("arguments[0].scrollIntoView(true);", picking_the_color[9])
+        picking_the_color[9].click()
+    elif picked_color == 'Blue':
+        driver.execute_script("arguments[0].scrollIntoView(true);", picking_the_color[8])
+        picking_the_color[8].click()
+    elif picked_color == 'Dark Blue':
+        driver.execute_script("arguments[0].scrollIntoView(true);", picking_the_color[7])
+        picking_the_color[7].click()
+    elif picked_color == 'Purple':
+        driver.execute_script("arguments[0].scrollIntoView(true);", picking_the_color[6])
+        picking_the_color[6].click()
+    elif picked_color == 'Light Purple':
+        driver.execute_script("arguments[0].scrollIntoView(true);", picking_the_color[5])
+        picking_the_color[5].click()
+    elif picked_color == 'Pink':
+        driver.execute_script("arguments[0].scrollIntoView(true);", picking_the_color[4])
+        picking_the_color[4].click()
+    elif picked_color == 'White':
+        driver.execute_script("arguments[0].scrollIntoView(true);", picking_the_color[2])
+        picking_the_color[2].click()
+    elif picked_color == 'Custom': #Red, Gray and Dark Gray would have to be customed
+        custom_color_picker = driver.find_elements('xpath', '//*[contains(@class, "absolute inset-")]')
+        custom_color_picker[-1].click()
+        adjust_color = driver.find_element('xpath', '//*[contains(@id, "rc-editable-input")]')
+        for i in range(6):
+            adjust_color.send_keys(Keys.BACK_SPACE)
+        adjust_color.send_keys(hex_color)
+        #create a way where the person can choose the background they wish to have in this, using the same color graph or giving them options to choose from
+        #regardless, the color has the be the hex code
+
+
+    #moves the file from downloads to my destination folder        
+    extracting_file_name = driver.find_element('css selector', '[name="template-name"]')
+    extracting_file_name = extracting_file_name.get_attribute('value')
+    extracting_file_name = extracting_file_name.split('.')
+    extracting_file_name = extracting_file_name[0] + '-PhotoRoom.' + extracting_file_name[1]
+    extracting_file_name = r"C:\Users\Argel Arroyo\Downloads\\" + extracting_file_name
+    # print(extracting_file_name)
+    try:
+        WebDriverWait(driver, 40).until(EC.element_to_be_clickable(('xpath', '//*[contains(@class, "max-w-full truncate component-semi-strong-500 text-to-leading-500")]')))
+    except:
+        pass
+    download_button = driver.find_element('xpath', '//*[contains(@class, "max-w-full truncate component-semi-strong-500 text-to-leading-500")]')
+    download_button.click()
+    try:
+        try:
+            WebDriverWait(driver, 40).until(EC.element_to_be_clickable(('xpath', '//*[contains(@class, "focus-visible:ring-accent-alpha-5 text-white w-full")]')))
+        except:
+            WebDriverWait(driver, 40).until(EC.element_to_be_clickable(('xpath', '//*[contains(@class, "max-w-full flex items-center justify-center h-12 content-to-edge-spacious-px-600")]')))
+    except:
+        pass
+    try:
+        download_continue_button_free = driver.find_element('xpath', '//*[contains(@class, "focus-visible:ring-accent-alpha-5 text-white w-full")]')
+        download_continue_button_free.click()
+    except:
+        try:
+            time.sleep(3)
+            download_continue_button_free = driver.find_element('xpath', '//*[contains(@class, "focus-visible:ring-accent-alpha-5 text-white w-full")]')
+            download_continue_button_free.click()
+        except:
+            download_continue_button_free = driver.find_element('xpath', '//*[contains(@class, "max-w-full flex items-center justify-center h-12 content-to-edge-spacious-px-600")]')
+            download_continue_button_free.click()
+
+    time.sleep(5) #code to wait till download is done
+
+    #this moves the file from recent downoads to the file of my choosing based on its path
+    destination_file_name = 'D:\Selenium_python2\Pic_folder\BackgroundPics'
+    try:
+        shutil.move(extracting_file_name, destination_file_name)
+    except:
+        print('pic already in')
+        pass
+
+    home_reset_button = driver.find_element('xpath', '//*[contains(@class, "mr-auto flex items-center justify-center space-x-4")]')
+    home_reset_button.click()
+
+
+
+
+
+table_images_for_query = []
+table_image_len_for_query = []
+table_unique_title_for_query = []
+remove_solds_from_active = []
+def dp_switch_images_starter():  
+    global dp_title, i
+    print(table_name)  
+    id_range = cursor.execute(f'SELECT id FROM {table_name} ORDER BY id DESC LIMIT 1;').fetchone()
+    id_range = id_range[0]
+    print(id_range)
+    ########################################################################
+     ########################################################################
+      ########################################################################
+       ########################################################################
+    last_number = 726 #653
+     ########################################################################
+      ########################################################################
+       ########################################################################
+        ########################################################################
+
+    # for i in range(5):
+    for i in range(id_range):
+        if i < last_number:
+            continue
+        print('starting ' +str(i))
+        # row_result = cursor.execute(f'SELECT dp_title, dp_url_list, dp_images FROM {table_name} WHERE id = {id_num};').fetchone()  
+        the_dp_info = cursor.execute(f'SELECT dp_title, dp_url_list FROM {table_name} WHERE id = {i}').fetchone()
+#im using isellclothes2001 inevntory db so i would need to locate the match based on the title then extract the url from the other list
+        try:
+            dp_url_link = the_dp_info[1]
+            dp_title = the_dp_info[0].replace("'", "''")
+            table_unique_title_for_query.append(dp_title)
+            print(dp_url_link)
+        except Exception as e:
+            print(e)
+            continue
+        #if this is true, means there are 2 accounts or more, and if so, then would be able to 
+
+        if account_i > 0:
+            print(dp_title)
+            other_account_url = cursor.execute(f"SELECT {table_name_2}.dp_url_list FROM {table_name_2} INNER JOIN {table_name} ON {table_name_2}.dp_title = {table_name}.dp_title WHERE {table_name_2}.dp_title = '{dp_title}';").fetchone()
+            
+            #create a code to identify any differences btwn the two tables.
+            print(other_account_url)
+            if other_account_url == None:
+                continue
+            dp_switch_images(other_account_url, i)
+        else:
+            print('1st account')
+            dp_switch_images(dp_url_link, i)
+        driver.close()
+        driver.switch_to.window(driver.window_handles[-1])
+        print('ending ' +str(i))
+
+def replacing_db_pic_cell_info(the_table_name):
+    connection = sqlite3.connect('D:\\Selenium_python2\\Depop_database.db')
+    cursor = connection.cursor()
+
+    combined_query = zip(table_images_for_query, table_image_len_for_query, table_unique_title_for_query)
+    combined_query_list = list(combined_query)
+
+    combined_sold_query = zip(remove_solds_from_active)
+    combined_sold_query_list = list(combined_sold_query)
+
+    sql_query = f"UPDATE {the_table_name} SET dp_images = ?, dp_image_len = ? WHERE dp_title = ?;"
+    cursor.executemany(sql_query, combined_query_list)
+
+    try:
+        sql_delete_query = f"DELETE FROM {the_table_name} WHERE id = ?;"
+        cursor.executemany(sql_delete_query, combined_sold_query_list)
+    except:
+        pass
+
+    connection.commit()
+    connection.close()
+
+def dp_sign_in(which_account):
+    time.sleep(1)
+    try:
+        driver.find_element('xpath', '//*[@id="__next"]/div/div[2]/div[2]/button[2]').click()
+    except:
+        pass
+    time.sleep(1.5)
+    driver.find_element('xpath', '//*[contains(@class, "styles__NavLinkText")]').click()
+    time.sleep(2)
+    if which_account == '_realvintage':
+        account_email = 'argelarroyo2001@gmail.com'
+        account_password = 'Pineappleguy305'
+    elif which_account == 'isellclothes2001':
+        account_email = 'isellclothes2001@gmail.com'
+        account_password = 'Fernanda*1979' 
+
+    username = WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[@id="username"]')))
+    username.send_keys(account_email)
+    time.sleep(2)
+    driver.find_element('xpath', '//*[@id="password"]').send_keys(account_password) 
+    driver.find_element('xpath', '//*[@id="main"]/div[3]/form/button').click()
+    time.sleep(3)
+    print('signed in')
+
+def dp_switch_images(the_url_link, id_num):
+    global images, len_of_images
+    pic_time = 15
+    #opens new link
+    
+    print(the_url_link[0])
+    driver.execute_script("window.open('{}');".format(the_url_link[0]))
+    driver.switch_to.window(driver.window_handles[-1])
+
+    #edits post
+    WebDriverWait(driver, 40).until(EC.element_to_be_clickable(('css selector', '[data-testid="button__edit"]')))
+    #identify if sold or not
+    sold_button = driver.find_elements('xpath', '//*[contains(@class, "styles__ButtonBlock-sc")]')
+    print('sold button length ' + str(len(sold_button)))
+    if len(sold_button) > 2:
+        remove_solds_from_active.append(id_num)
+        pass
+    else:
+        post_edit_button = driver.find_elements('css selector', '[data-testid="button__edit"]')
+        driver.execute_script("arguments[0].scrollIntoView(true);", post_edit_button[0])
+        driver.execute_script("arguments[0].click();", post_edit_button[0])
+
+        #code to wait for page to load
+        pictures = WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "ImageInput-styles__Delete-sc")]')))
+
+        #removing the old pics
+        deleting_pictures_button = driver.find_elements('xpath', '//*[contains(@class, "ImageInput-styles__Delete-sc")]')
+        print('len deleting pictures:', len(deleting_pictures_button))
+        for pics in deleting_pictures_button:
+            driver.execute_script("arguments[0].click();", pics)
+
+        time.sleep(2)
+        #extracting the new images
+        image_i = str(id_num) + '_'
+        image_list = []
+        folder_dirr = 'D:\Selenium_python2\Pic_folder\BackgroundPics'
+        for images in os.listdir(folder_dirr):
+            if (images.startswith(image_i)):
+                imge = folder_dirr + "\\" + images
+                image_list.append(imge)    
+        print(image_list)
+
+        #inserts the new images
+        pstart = 0        
+        for i in range(len(image_list)):
+            driver.find_element('xpath', '//*[@id="imageInput"]').send_keys(str(image_list[pstart]))
+            pstart += 1
+            time.sleep(pic_time)
+
+        #saves changes then continues to next iteration
+        save_changes_button = driver.find_element('xpath', '//*[contains(@class, "styles__SaveButton-sc")]')
+        driver.execute_script("arguments[0].scrollIntoView(true);", save_changes_button)
+        driver.execute_script("arguments[0].click();", save_changes_button)
+        
+        try:
+            WebDriverWait(driver, 15).until(EC.element_to_be_clickable(('css selector', '[data-testid="button__edit"]')))
+        except:
+            driver.find_element('xpath', '//*[@id="listingBrands__select"]').send_keys('Other')
+            driver.find_element('xpath', '//*[@id="listingBrands__select"]').send_keys(Keys.DOWN)
+            driver.find_element('xpath', '//*[@id="listingBrands__select"]').send_keys(Keys.DOWN)
+            driver.find_element('xpath', '//*[@id="listingBrands__select"]').send_keys(Keys.ENTER)
+            time.sleep(1)
+            save_changes_button = driver.find_element('xpath', '//*[contains(@class, "styles__SaveButton-sc")]')
+            driver.execute_script("arguments[0].scrollIntoView(true);", save_changes_button)
+            driver.execute_script("arguments[0].click();", save_changes_button)
+            WebDriverWait(driver, 15).until(EC.element_to_be_clickable(('css selector', '[data-testid="button__edit"]')))
+
+        script_tag = driver.find_element('css selector', "[data-testid='meta-schema__json-ld']")
+        script_content = script_tag.get_attribute("innerHTML")
+        data = script_content.encode('ascii', 'ignore').decode('unicode_escape')
+        data = json.loads(script_content)
+        images = data['image']
+        len_of_images = int(len(images))
+        images = '; '.join(images)
+        time.sleep(3)
+        
+        table_images_for_query.append(images)
+        table_image_len_for_query.append(len_of_images)
+
+def extracting_sql_results():
+    id_range = cursor.execute(f'SELECT id FROM {table_name} ORDER BY id DESC LIMIT 1;').fetchone()
+    id_range_num = id_range[0]
+
+    driver.execute_script("window.open('{}');".format('https://app.photoroom.com/login'))
+    driver.switch_to.window(driver.window_handles[1])
+
+    removal_log_in(bg_email)
+
+    #gathers all the images paths and places into list
+    image_list = []
+    pic_folder = "Pic_folder"
+    pic_file = "overall_pics"
+    folder_directory = "D:\\Selenium_Python2\\" + pic_folder + "\\" + pic_file
+    for images in os.listdir(folder_directory):
+        image_path = folder_directory + "\\" + images
+        image_list.append(image_path)
+
+    #this checks the folder and sees whats the last current post and continues from there if needed
+    folder_path = 'D:\Selenium_python2\Pic_folder\BackgroundPics'
+    files = os.listdir(folder_path)
+    background_file_len = len(files)
+    image_list_whats_left = image_list[background_file_len:]
+
+    #this first focuses on changin background to every single pic
+    for image in image_list_whats_left:
+       removal_editer(image) 
+
+    #will most likely need row result to extract the url_list with the id_num given in file path
+     
+    #then once all pics have backgrounds changed, then places into files pic based on their id number and the pic order info thats in its file directory
+    dp_switch_images_total_account_identifier()
+
+# uploading_pics_to_file() # STEP 1 :::this works great already, doesnt add duplicates
+
+# extracting_sql_results()# STEP 2 :::this works great too, this includes the removal editer button to change
+#all the images to include those with backgrounds
+
+#----------------------------------------------------------------
+for account_i, account in enumerate(total_accounts):
+
+    print(account)
+    
+    if account_i == 0:
+        pass
+    else:
+        the_table_name = 'dp_inv_' + account
+        try:
+            print(' account starting ' + str(account_i))
+            print(' account starting ' + account)
+            dp_sign_in(account)
+            dp_switch_images_starter() 
+            replacing_db_pic_cell_info(the_table_name)
+        except Exception as e:
+            print('restart code with the number ', str(i))
+            traceback.print_exc()
+            print(e)
+            replacing_db_pic_cell_info(the_table_name)
