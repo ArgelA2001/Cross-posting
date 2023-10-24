@@ -1,0 +1,187 @@
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import Select
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+import time
+import requests
+from bs4 import BeautifulSoup
+from selenium.common.exceptions import NoSuchElementException
+import codecs
+import re
+import json
+import sqlite3
+import emoji
+from PyQt5.QtWidgets import QApplication
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import traceback
+import unicodedata
+
+account_name = 'isellclothes2001'
+url = 'https://www.depop.com/' + account_name + '/'
+# results = requests.get(url)
+
+chrome_options = Options()
+chrome_options.add_experimental_option("detach", True)
+driver = webdriver.Chrome("D:\\Selenium_python2\\chromedriver.exe", chrome_options=chrome_options)
+# driver.maximize_window()
+driver.get(url)
+count = 0
+time.sleep(3)
+
+def start_up(email, acpassword):
+    global cookies_button, following_button
+    cookies_button = driver.find_element('css selector', '[data-testid="cookieBanner__acceptAllButton"]')
+    cookies_button.click()
+    time.sleep(2)
+    log_in_button = driver.find_element('xpath', '//*[contains(@class, "styles__NavLinkText")]')
+    log_in_button.click()
+    time.sleep(2)
+    username = WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[@id="username"]')))
+    username.send_keys(email)
+
+    password = driver.find_element('xpath', '//*[@id="password"]')
+    password.send_keys(acpassword) 
+
+    log_in = driver.find_elements('xpath', '//*[contains(@class, "LoginButton-sc")]')
+    log_in[1].click()
+
+    time.sleep(20) # add presence of element located to this
+
+# def start_up(email, acpassword):
+#     cookies_button = driver.find_element('css selector', '[data-testid="cookieBanner__acceptAllButton"]')
+#     cookies_button.click()
+#     time.sleep(2)
+#     log_in_button = driver.find_element('xpath', '//*[contains(@class, "styles__NavLinkText")]')
+#     driver.execute_script("arguments[0].click()",log_in_button)
+#     time.sleep(2)
+#     username = WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[@id="username"]')))
+#     username.send_keys(email)
+
+#     password = driver.find_element('xpath', '//*[@id="password"]')
+#     password.send_keys(acpassword) 
+
+#     log_in = driver.find_element('xpath', '//*[contains(@class, "LoginButton-sc")]')
+#     log_in.click()
+#     driver.find_element('xpath', '//*[@id="mainNavigation"]/li[4]/a').click()
+#     time.sleep(2)
+
+def scroll_down_script():
+    try:
+        all_post = driver.find_elements('xpath', '//*[contains(@class, "styles__PrimaryProductImage-sc-__dbpyge-1 jUQFmU")]') 
+        # load_more_button = driver.find_element('xpath', '//*[contains(@class, "sc-jOrMOR QkOJi")]')
+        load_more_button = driver.find_element('xpath', '//*[@id="products-tab"]/div/div/button')
+        scroll_down = driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        while True:
+            time.sleep(1)
+            # Scroll down to the bottom of the screen
+            scroll_down
+            time.sleep(1)
+            driver.execute_script("arguments[0].scrollIntoView(true)",load_more_button)
+            time.sleep(1)
+            load_more_button.click()
+            try: 
+                time.sleep(1) 
+                load_more_button.click()
+            except:
+                pass
+            try:
+                sold_post = driver.find_elements('xpath', '//*[contains(@class, "styles__SoldOverlay-sc-__sc-13q41bc-9 jMuEhs")]')
+                if len(sold_post) > 10:
+                    print('FINALLY A SOLD POST')
+                    break
+                else:
+                    print('NO SOLD POST YET')
+            except NoSuchElementException:
+                
+                print(len(sold_post))
+                pass
+    except:
+        print('NO LOAD MORE BUTTON')
+        scroll_down = driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        while True:
+            time.sleep(1)
+            scroll_down
+            time.sleep(1)
+            try:
+                sold_post = driver.find_elements('xpath', '//*[contians(@class, "styles__SoldOverlay-sc-__sc-13q41bc-9 jMuEhs")]')
+                if len(sold_post) > 2:
+                    print('FINALLY A SOLD POST')
+                    break
+                else:
+                    print('NO SOLD POST YET')
+            except NoSuchElementException:
+                print('error error')
+                
+    #create option if no f2a is needed
+
+
+def each_post(): 
+    first_post_count = 0
+    global count  
+    try:
+        print("starting item count " + str(count))
+        time.sleep(3)
+        # print('reading all posts')
+        posts_for_link = driver.find_elements('css selector', '[data-testid="product__item"]')
+        # print('posts_for_link: ', len(posts_for_link))
+
+        all_post = driver.find_elements('css selector', '[data-testid="primaryProductImage"]')
+        # print('all post', len(all_post))
+        sold_post = driver.find_elements('xpath', '//*[contains(@class, "styles__SoldOverlay-sc-__sc-13q41bc-9 jMuEhs")]')
+        # print('sold_post', len(sold_post))
+        total_available_post = len(all_post) - len(sold_post)
+        # print('length of posts')
+        # print('total_available_post', total_available_post)
+        # for i in range(2):
+        for post in range(total_available_post):
+            posts_for_link = driver.find_elements('css selector', '[data-testid="product__item"]')
+            all_post = driver.find_elements('css selector', '[data-testid="primaryProductImage"]')
+            print('posts for link', len(posts_for_link))
+            print('start post ', str(count))
+            try:
+                driver.execute_script("arguments[0].scrollIntoView(true)",all_post[count])
+                print('clicking good')
+            except:
+                pass
+            
+            time.sleep(1)
+            # driver.execute_script("arguments[0].click()",all_post[count])
+            post_url = posts_for_link[count].get_attribute('href')
+            time.sleep(3)
+            # driver.execute_script("window.open('" + post_url + "', '_blank');")
+            # open a new tab with the second page
+            driver.execute_script("window.open('{}');".format(post_url))
+            time.sleep(2)
+            # switch to the second tab
+            driver.switch_to.window(driver.window_handles[1])
+
+            post_for_link = driver.find_elements('css selector', '[data-testid="product__item"]')
+            posts_for_link = post_for_link[1:]
+            # print('post_for_link: ', len(post_for_link))
+            # print('posts_for_link: ', len(posts_for_link))
+
+            all_post = driver.find_elements('css selector', '[data-testid="primaryProductImage"]')
+            # print('all post', len(all_post))
+            
+            edit_button =  driver.find_element('xpath', '//*[contains(@class, "ButtonEdit-sc-")]')
+            edit_button.click()
+            time.sleep(1)
+            
+            save_changes_button =  WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "SaveButton-sc")]')))
+            driver.execute_script("arguments[0].scrollIntoView(true)",save_changes_button)
+            save_changes_button.click()
+            count += 1
+            driver.close()
+            driver.switch_to.window(driver.window_handles[0])
+            time.sleep(2)
+    except Exception as e:
+        traceback.print_exc()
+        print(e)
+     
+
+start_up('isellclothes2001@gmail.com', 'Fernanda*1979')
+scroll_down_script()
+each_post()
