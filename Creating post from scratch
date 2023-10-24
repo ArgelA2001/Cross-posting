@@ -1,89 +1,83 @@
-import numpy as np
 
-
-
-#Game plan for this
-#Need to go into gmail, grab pictures and divide into groups of 4
-#Maybe learn some front end, or create some possible draft witht he picture, to create title, 
-#much easier to just save all pics into file, then just recall what draft it is I suppose for when I get the other projects going
-#Or just figure out how to grab images from post, then save as png, then go on from there.  The same way I will have to do with the whatnot filter I have at the moment.  
-#Grabbing old post is easy
-#then from the title, parse and identify the size, brand, price, etc
-#Still need to figure out the whole depop issue with the sizing experiencing #REF!
-#still need to test my code with a whole new database of clothing and see if parsing still works correctly
-#My posting layout:::
-#   Title, Size, Price, Any flaws, General description.
-#save pics as jpeg or png file,
-#overall, just need to create the drafts in the list, then from there can just automate through all the pics, posting 4 for each.  
-
-
-#how many options in terms of this project?
-#transferring post
-###scrape pictures from post, and since most likely will be different amount of pics, must find someone way to keep track of that number
-###then scrape the title too
-###everything must stay in order. 
-#creating post
-#
-# Grab pics from folders
-# divide into groups of 4
-# create a csv with 2 columns and display the first pic of the 4
-# create title with same baisic layout in the 2nd
-# title, era, size, price, condition, color, tags, general description
-# then from there can create the depop layout, instead of scraping info from whatnot, that might help
-
+#use this code after you have your pictures organized in the files then this puts them all into excel where you can 
+#then create the title and the price for it
 #START OF CODE
+import numpy as np
+import os
+from os import listdir
 from PIL import Image
 import numpy as np
 import sys
 import os
 import csv
 import xlsxwriter
+import openpyxl
+from openpyxl import load_workbook
+from openpyxl.utils import get_column_letter
+from openpyxl.drawing.image import Image
 
-# def create_file_list(myDir, format='.jpg'):
-#     file_list = []
-#     print(myDir)
-#     for root, dirs, files in os.walk(myDir, topdown=False):
-#         for name in files:
-#             if name.endswith(format):
-#                 full_name = os.path.join(root, name)
-#                 file_list.append(full_name)
-#     return file_list
-# my_file_list = create_file_list(r'C:\Users\Argel Arroyo\Desktop\Selenium_python\betapics')
+filename = "PicFile1.xlsx"
+def create_workbook(filename):
+    workbook = xlsxwriter.Workbook(filename)
+    worksheet_pics = workbook.add_worksheet('pics')
 
-# for file in my_file_list:
-#     print(file)
-#     img_file = Image.open('C:\Users\Argel Arroyo\Desktop\Selenium_python\betapics')
+def column_customization():
+    worksheet_pics.set_default_row(40)
 
+def load_workbook(filename):
+    wb = load_workbook(filename)
+    ws = wb.worksheets[0]
+    ws_tables = []
+    for table in ws._talbes:
+        ws_tables.append(table)
+        print(table.name, table.ref)
 
-#### place image into cells
-workbook = xlsxwriter.Workbook('path to images excel insert')
-worksheet = workbook.add_worksheet()
+image_list = []
+pic_folder = "Pic_folder"
+pic_file = "folder12"
+folder_dirr = "D:\\Selenium_Python2\\" + pic_folder + "\\" + pic_file
+for images in os.listdir(folder_dirr):
+    if (images.endswith(".JPG")):
+        imge = folder_dirr + "\\" + images
+        image_list.append(imge)
 
-#to adjust size of cells
-worksheet.set_column('b1 to whatever for pics')
-worksheet.set_default_row(45)
+item_count = 0
+def inserting_images():
+    global item_count
+    count = 0
+    image_row = 0
+    image_column = 0
+    #need to change the picfile number everytime to create a new worksheet
+    wb = xlsxwriter.Workbook("PicFile13.xlsx")
+    ws_pics = wb.add_worksheet()
+    for img in image_list:
+        if count == 3:
+            ws_pics.insert_image(image_row, image_column, img, {'x_scale': 0.04, 'y_scale': 0.04}) 
+            count = 0
+            image_column = 0
+            image_row += 1
+            item_count += 1
+        else:
+            ws_pics.insert_image(image_row, image_column, img, {'x_scale': 0.04, 'y_scale': 0.04}) 
+            count += 1
+            image_column += 1
+    wb.close()
 
-#image list
-images = [ ,
+def inserting_images_as_sheet():
+    count = 0
+    image_row = 0
+    wb = openpyxl.load_workbook('PicFile1.xlsx')
+    ws = wb.create_sheet('Pic File')
+    for img in image_list:
+        if count == 4:
+            count = 0
+            image_row += 1
+        image = Image(img)
+        column_letter = get_column_letter(count + 1)
+        ws.add_image(image, f"{column_letter}{image_row}")
+        count += 1
+    wb.save('PicFile1.xlsx')
 
-    ]
+inserting_images()
 
-#insert images
-image_row = 0
-image_col = 1
-for image in images:
-    worksheet.insert_image(image_row, image_col, image, {
-        'x_scale': 0.5, 'y_scale': 0.5, 'x_offset': 5, 'y_offset': 5, 'positioning': 1
-    })
-    image_row += 1
-#####    
-
-#insert titles
-title_row = 0
-title_col = 0
-for title in titles:
-    worksheet.write(title_row, title_col, title)
-    title_row += 1
-
-workbook.close()
 
