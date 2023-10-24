@@ -1,0 +1,471 @@
+import pandas as pd 
+import numpy as np 
+import matplotlib.pyplot as plt
+import calendar
+import mplcursors
+
+df = pd.read_csv("D:\Selenium_python2\Depop Sales Official.csv")
+item_brand = df['Brand'].values
+
+time_of_sale = df['Date of sale']
+df['sale date'] = pd.to_datetime(df['Date of listing'])
+df['date'] = pd.to_datetime(df['Date of sale'])
+df['month'] = df['date'].dt.month
+df['year'] = df['date'].dt.year
+
+price = df['Item price']
+price = [pr[1:] for pr in price]
+price = [int(float(pr)) for pr in price]
+price = np.array(price)
+
+shipping = df['Buyer shipping cost']
+shipping = [pr[1:] for pr in shipping]
+shipping = [int(float(price)) if price else 0 for price in shipping]
+shipping = np.array(shipping)
+
+total_price = price + shipping
+df['total price'] = total_price
+
+print(df['total price'].head(10))
+# Group the data by month and year and calculate the total sales for each month and year
+monthly_sales = df.groupby(['year', 'month']).size()
+# print(monthly_sales)
+
+df['sales'] = df.groupby(['year', 'month'])['date'].transform('count')
+# print(df['sales'].head(20))
+time_of_sale = np.array(time_of_sale)
+
+item_cat = df['Category']
+item_size = df['Size']
+item_title = df['Description']
+shipping = df['Buyer shipping cost']
+
+def month_name(time_num):
+    return calendar.month_name[time_num]
+
+# Create a bar plot for Quarter 1
+################################ TOTAL COUNT BY MONTH
+#total sales based on month year and the total count of sales in each month year
+def total_count_by_month():
+    monthly_sales = df.groupby(['year', 'month']).size().reset_index(name='sales_count')
+
+    # Combine 'year' and 'month' columns into a single column 'year_month'
+    monthly_sales['year_month'] = monthly_sales['year'].astype(str) + '-' + monthly_sales['month'].astype(str)
+    monthly_sales['year_month'] = monthly_sales['year_month'].apply(lambda x: f"{calendar.month_name[int(x.split('-')[1])]} {x.split('-')[0]}")
+
+    plt.figure(figsize=(12, 6))
+    plt.plot(monthly_sales['year_month'], monthly_sales['sales_count'], marker='o')
+    plt.xlabel('Year and Month')
+    plt.ylabel('Total Sales Count')
+    plt.title('Total Sales Count for Each Month')
+    plt.xticks(rotation=60)
+    plt.grid(True)
+    plt.gca().spines['right'].set_visible(False)
+    plt.gca().spines['top'].set_visible(False)
+    plt.xlim(left=-0.5)
+    plt.subplots_adjust(bottom=0.3)
+    for i, y in enumerate(monthly_sales['sales_count']):
+        plt.annotate(str(y), (monthly_sales['year_month'][i], y), fontsize=16, fontweight = 'bold', ha='center')
+    plt.show()
+# total_count_by_month()
+
+################################ TOTAL SALES BY MONTH
+
+def total_sales_by_month(time_period):
+    if time_period == 'Q':
+        time_of_graph = 'year_quarter'
+        graph_time = 'quarter'
+    elif time_period == 'M':
+        time_of_graph = 'year_month'
+    monthly_sales = df.groupby(['year', 'month'])['total price'].sum().reset_index(name = 'sales_values')
+
+    # Combine 'year' and 'month' columns into a single column 'year_month'
+    monthly_sales['year_month'] = monthly_sales['year'].astype(str) + '-' + monthly_sales['month'].astype(str)
+    monthly_sales['year_month'] = monthly_sales['year_month'].apply(lambda x: f"{calendar.month_name[int(x.split('-')[1])]} {x.split('-')[0]}")
+
+    plt.figure(figsize=(12, 6))
+    plots = plt.plot(monthly_sales['year_month'], monthly_sales['sales_values'], marker='o')
+    plt.xlabel('Year and ' + graph_time)
+    plt.ylabel('Total Sales Value')
+    plt.title('Total Sales Value for Each ' + graph_time)
+    plt.xticks(rotation=60)
+    plt.grid(True)
+    plt.gca().spines['right'].set_visible(False)
+    plt.gca().spines['top'].set_visible(False)
+    plt.xlim(left=-0.5)
+    plt.subplots_adjust(bottom=0.3)
+    for i, y in enumerate(monthly_sales['sales_values']):
+        plt.annotate(str(y), (monthly_sales['year_month'][i], y), fontsize=16, fontweight = 'bold', ha='center')
+    plt.show()
+
+# total_sales_by_month('Q')
+
+#still need to figure this piece of code out
+def total_sales_by_quarter():
+    monthly_sales = df.groupby(['year', 'quarter'])['total price'].sum().reset_index(name = 'sales_values')
+
+    monthly_sales['year_quarter'] = monthly_sales['year'].astype(str) + 'Q' + monthly_sales['quarter'].astype(str)
+    monthly_sales['year_quarter'] = monthly_sales['year_quarter'].apply(lambda x: f"{calendar.month_name[int(x.split('Q')[1])]} {x.split('Q')[0]}")
+    plots = plt.plot(monthly_sales['year_quarter'], monthly_sales['sales_values'], marker='o')
+    plt.xlabel('Year and Quarter')
+    plt.ylabel('Total Sales Value')
+    plt.title('Total Sales Value for Each Quarter')
+    plt.xticks(rotation=60)
+    plt.grid(True)
+    plt.gca().spines['right'].set_visible(False)
+    plt.gca().spines['top'].set_visible(False)
+    plt.xlim(left=-0.5)
+    plt.subplots_adjust(bottom=0.3)
+    for i, y in enumerate(monthly_sales['sales_values']):
+        plt.annotate(str(y), (monthly_sales['year_quarter'][i], y), fontsize=16, fontweight = 'bold', ha='center')
+    plt.show()
+total_sales_by_quarter()
+################################################################ TOTAL SALES BY CATEGORY
+
+def cat_count_plot(time_num, timeline):
+    if timeline == 'quarter': # need a way to differentiate btwn years as well, or just do this past year
+        quarter_data = df[df['date'].dt.quarter == time_num]
+        category_sales = quarter_data.groupby('Category').size().reset_index(name='cat_count') 
+        title_string = 'Quarter ' + str(time_num)
+
+    elif timeline == 'total':
+        category_sales = df.groupby('Category').size().reset_index(name='cat_count')
+        title_string = "Total"
+    
+    elif timeline == 'month':
+        month_data = df[df['date'].dt.month == time_num]
+        category_sales = month_data.groupby('Category').size().reset_index(name='cat_count') 
+        title_string = month_name(time_num)
+        
+    category_sales = category_sales.sort_values(by='cat_count', ascending=False)
+
+    plt.figure(figsize=(12, 6))
+    bars = plt.bar(category_sales['Category'], category_sales['cat_count'])
+    plt.xlabel('Category')
+    plt.ylabel('Sales')
+    plt.title(title_string + ' Sales Count for Each Category')
+    plt.xticks(rotation=90)
+    # plt.grid(True)
+    for bar in bars:
+        plt.text(bar.get_x() + bar.get_width() / 2, bar.get_height(), str(int(bar.get_height())), 
+                ha='center', va='bottom', fontsize=10, fontweight='bold')
+    plt.gca().spines['right'].set_visible(False)
+    plt.gca().spines['top'].set_visible(False)
+
+    plt.subplots_adjust(bottom=0.2)
+    plt.xlim(left=-1)
+    plt.subplots_adjust(left=0.15)
+    plt.show()
+cat_count_plot(4, 'month')
+
+def cat_sales_plot(time_num, timeline):
+    if timeline == 'quarter':
+        quarter_data = df[df['date'].dt.quarter == time_num]
+        category_sales = quarter_data.groupby('Category')['total price'].sum().reset_index(name='total_sales')
+        title_string = 'Quarter ' + str(time_num)
+
+    elif timeline == 'total':
+        category_sales = df.groupby('Category')['total price'].sum().reset_index(name='total_sales')
+        title_string = "Total"
+
+    elif timeline == 'month':
+        month_data = df[df['date'].dt.month == time_num]
+        category_sales = month_data.groupby('Category')['total price'].sum().reset_index(name='total_sales')
+        title_string = month_name(time_num)
+
+    category_sales = category_sales.sort_values(by='total_sales', ascending=False)
+
+    plt.figure(figsize=(12, 6))
+    bars = plt.bar(category_sales['Category'], category_sales['total_sales'])
+    plt.xlabel('Category')
+    plt.ylabel('Total Sales Amount')
+    plt.title(title_string + ' Total Sales Amount for Each Category')
+    plt.xticks(rotation=90, fontsize=9)
+    
+    for bar in bars:
+        plt.text(bar.get_x() + bar.get_width() / 2, bar.get_height(), "$" + str(bar.get_height()),
+                 ha='center', va='bottom', fontsize=6, fontweight='bold')
+    
+    plt.gca().spines['right'].set_visible(False)
+    plt.gca().spines['top'].set_visible(False)
+
+    plt.subplots_adjust(bottom=0.2)
+    plt.subplots_adjust(left=0.15)
+    plt.xlim(left=-0.5, right=len(category_sales['Category']) - 0.5)
+
+    plt.tight_layout()
+    plt.show()
+cat_sales_plot(1, 'total')
+
+################################################################  TOTAL SALES BY BRAND
+def brand_count_plot(time_num, timeline):
+    if timeline == 'quarter': # need a way to differentiate btwn years as well, or just do this past year
+        quarter_data = df[df['date'].dt.quarter == time_num]
+        brand_sales = quarter_data.groupby('Brand').size().reset_index(name='brand_count') 
+        title_string = 'Quarter ' + str(time_num)
+
+    elif timeline == 'total':
+        brand_sales = df.groupby('Brand').size().reset_index(name='brand_count')
+        title_string = "Total"
+    
+    elif timeline == 'month':
+        month_data = df[df['date'].dt.month == time_num]
+        brand_sales = month_data.groupby('Brand').size().reset_index(name='brand_count') 
+        title_string = month_name(time_num)
+
+    brand_sales = brand_sales.sort_values(by='brand_count', ascending=False)
+
+    plt.figure(figsize=(12, 6))
+    bars = plt.bar(brand_sales['Brand'], brand_sales['brand_count'])
+    plt.xlabel('Brand')
+    plt.ylabel('Sales')
+    plt.title(title_string + ' Sales Count for Each Brand')
+    plt.xticks(rotation=90, fontsize=9)
+    # # plt.grid(True)
+    for bar in bars:
+        plt.text(bar.get_x() + bar.get_width() / 2, bar.get_height(), str(int(bar.get_height())), 
+                 ha='center', va='bottom', fontsize=6, fontweight='bold')
+    plt.gca().spines['right'].set_visible(False)
+    plt.gca().spines['top'].set_visible(False)
+
+    # Increase the bottom border
+    plt.subplots_adjust(bottom=0.2)
+    plt.subplots_adjust(left=0.15)
+    plt.xlim(left=-0.5, right=len(brand_sales['Brand'])-0.5)
+
+    # Adjust the layout to fit the contents
+    plt.tight_layout()
+    plt.show()
+brand_count_plot(1, 'total')
+
+def brand_sales_plot(time_num, timeline):
+    if timeline == 'quarter':
+        quarter_data = df[df['date'].dt.quarter == time_num]
+        brand_sales = quarter_data.groupby('Brand')['total price'].sum().reset_index(name='total_sales')
+        title_string = 'Quarter ' + str(time_num)
+
+    elif timeline == 'total':
+        brand_sales = df.groupby('Brand')['total price'].sum().reset_index(name='total_sales')
+        title_string = "Total"
+
+    elif timeline == 'month':
+        month_data = df[df['date'].dt.month == time_num]
+        brand_sales = month_data.groupby('Brand')['total price'].sum().reset_index(name='total_sales')
+        title_string = month_name(time_num)
+
+    brand_sales = brand_sales.sort_values(by='total_sales', ascending=False)[:60]
+
+    plt.figure(figsize=(12, 6))
+    bars = plt.bar(brand_sales['Brand'], brand_sales['total_sales'])
+    
+    plt.xlabel('Brand')
+    plt.ylabel('Total Sales Amount')
+    plt.title(title_string + ' Total Sales Amount for Each Brand')
+    plt.xticks(range(60), rotation=90, fontsize=9)
+    
+    # for bar in bars:
+    #     plt.text(bar.get_x() + bar.get_width() / 2, bar.get_height(), f"${bar.get_height():,.2f}",
+    #              ha='center', va='bottom', fontsize=6, fontweight='bold')
+    for bar in bars:
+        plt.text(
+            bar.get_x() + bar.get_width() / 2, 
+            bar.get_height() + 3,  # Adjust the vertical offset here
+            "$" + str(bar.get_height()),
+            ha='center', 
+            fontsize=5,  # Adjust fontsize here
+            fontweight='bold'
+        )
+    
+    plt.gca().spines['right'].set_visible(False)
+    plt.gca().spines['top'].set_visible(False)
+
+    plt.subplots_adjust(bottom=0.2)
+    plt.subplots_adjust(left=0.15)
+    plt.xlim(left=-0.5, right=len(brand_sales['Brand']) - 0.5)
+
+    plt.tight_layout()
+    plt.show()
+brand_sales_plot(1, 'total')
+
+################################################################ TOTAL SALES BY SIZE
+# size_sales = df.groupby('Size').size().reset_index(name='size_count')
+def size_count_plot(time_num, timeline):
+    if timeline == 'quarter': # need a way to differentiate btwn years as well, or just do this past year
+        quarter_data = df[df['date'].dt.quarter == time_num]
+        size_sales = quarter_data.groupby('Size').size().reset_index(name='size_count') 
+        title_string = 'Quarter ' + str(time_num)
+
+    elif timeline == 'total':
+        size_sales = df.groupby('Size').size().reset_index(name='size_count')
+        title_string = "Total"
+    
+    elif timeline == 'month':
+        month_data = df[df['date'].dt.month == time_num]
+        size_sales = month_data.groupby('Size').size().reset_index(name='size_count') 
+        title_string = month_name(time_num)
+    size_sales = size_sales.sort_values(by='size_count', ascending=False)
+
+    plt.figure(figsize=(12, 6))
+    bars = plt.bar(size_sales['Size'], size_sales['size_count'])
+    plt.xlabel('Size')
+    plt.ylabel('Sales')
+    plt.title(title_string + ' Sales Count for Each Brand')
+    plt.xticks(rotation=90, fontsize=9)
+    # # plt.grid(True)
+    for bar in bars:
+        plt.text(bar.get_x() + bar.get_width() / 2, bar.get_height(), str(int(bar.get_height())), 
+                 ha='center', va='bottom', fontsize=6, fontweight='bold')
+    cursor = mplcursors.cursor(bars, hover=True)
+    cursor.connect("add", lambda sel: sel.annotation.set_text(f"${sel.artist.get_height():,.2f}"))
+
+    plt.gca().spines['right'].set_visible(False)
+    plt.gca().spines['top'].set_visible(False)
+
+    # Increase the bottom border
+    plt.subplots_adjust(bottom=0.2)
+    plt.subplots_adjust(left=0.15)
+    plt.xlim(left=-0.5, right=len(size_sales['Size'])-0.5)
+
+    # Adjust the layout to fit the contents
+    plt.tight_layout()
+    plt.show()
+size_count_plot(1, 'quarter')
+
+def size_sales_plot(time_num, timeline):
+    if timeline == 'quarter':
+        quarter_data = df[df['date'].dt.quarter == time_num]
+        size_sales = quarter_data.groupby('Size')['total price'].sum().reset_index(name='total_sales')
+        title_string = 'Quarter ' + str(time_num)
+
+    elif timeline == 'total':
+        size_sales = df.groupby('Size')['total price'].sum().reset_index(name='total_sales')
+        title_string = "Total"
+
+    elif timeline == 'month':
+        month_data = df[df['date'].dt.month == time_num]
+        size_sales = month_data.groupby('Size')['total price'].sum().reset_index(name='total_sales')
+        title_string = month_name(time_num)
+
+    size_sales = size_sales.sort_values(by='total_sales', ascending=False)
+
+    plt.figure(figsize=(12, 6))
+    bars = plt.bar(size_sales['Size'], size_sales['total_sales'])
+    plt.xlabel('Size')
+    plt.ylabel('Total Sales Amount')
+    plt.title(title_string + ' Total Sales Amount for Each Size')
+    plt.xticks(rotation=90, fontsize=9)
+    
+    for bar in bars:
+        plt.text(bar.get_x() + bar.get_width() / 2, bar.get_height(), "$" + str(bar.get_height()),
+                 ha='center', va='bottom', fontsize=6, fontweight='bold')
+    
+    plt.gca().spines['right'].set_visible(False)
+    plt.gca().spines['top'].set_visible(False)
+
+    plt.subplots_adjust(bottom=0.2)
+    plt.subplots_adjust(left=0.15)
+    plt.xlim(left=-0.5, right=len(size_sales['Size']) - 0.5)
+
+    plt.tight_layout()
+    plt.show()
+size_sales_plot(1, 'total')
+################################################################QUICKEST SALE TIMES BASED ON CATEGORY QUARTER?
+def quickest_sales(brand_or_cat, timeline, time_num):
+    df['time_to_sale'] = df['date'] - df['sale date']
+    # Filter the rows where time to sale is less than a month (30 days)
+    if timeline == 'Total':
+        sold_in_less_than_month = df[df['time_to_sale'] < pd.Timedelta(days=30)]
+        timeline_text = 'Total'
+    elif timeline == 'Quarter':
+        df['quarter'] = df['date'].dt.quarter
+        sold_in_less_than_month = df[(df['time_to_sale'] < pd.Timedelta(days=30)) & (df['quarter'] == time_num)]  # Replace 1 with the desired quarter
+        timeline_text = timeline + ' ' + str(time_num)
+
+    elif timeline == 'Month':
+        df['month'] = df['date'].dt.month
+        sold_in_less_than_month = df[(df['time_to_sale'] < pd.Timedelta(days=30)) & (df['month'] == time_num)]  # Replace 1 with the desired month
+        timeline_text = month_name(time_num)
+    else:
+        print('error')
+        
+
+    items_sold_within_month = sold_in_less_than_month[brand_or_cat].value_counts()
+    plt.figure(figsize=(12, 6))
+    bars = plt.bar(items_sold_within_month.index, items_sold_within_month.values)
+    for bar in bars:
+        plt.text(bar.get_x() + bar.get_width() / 2, bar.get_height(), str(int(bar.get_height())), 
+                 ha='center', va='bottom', fontsize=6, fontweight='bold')
+    plt.title(timeline_text + ' Sold in Less Than Month for ' + brand_or_cat)
+    plt.xlabel(brand_or_cat)
+    plt.ylabel('Sold')
+    plt.xticks(rotation=90, fontsize=9)
+    plt.subplots_adjust(bottom=0.2)
+    plt.show()
+quickest_sales('Brand', 'Quarter', 2) #either brand or category are the main ones
+
+################################################################ AVERAGE SALE TIME
+def average_sales(brand_or_cat, timeline, time_num):
+    # Calculate the difference between sale date and date of listing
+    df['time_to_sale'] = df['date'] - df['sale date']
+    if timeline == 'Total':
+        # Group by brands and calculate the average time to sale for each brand
+        average_time_to_sale = df.groupby(brand_or_cat)['time_to_sale'].mean().reset_index()
+        average_time_to_sale = average_time_to_sale.sort_values(by='time_to_sale', ascending=True)
+    elif timeline == 'Quarter':
+        df['quarter'] = df['date'].dt.quarter
+        quarter_data = df[df['date'].dt.quarter == time_num]
+    
+        # Group by 'brand_or_cat' and quarter, calculate the average time to sale for each combination
+        average_time_to_sale = quarter_data.groupby([brand_or_cat, 'quarter'])['time_to_sale'].mean().reset_index()
+        average_time_to_sale = average_time_to_sale.sort_values(by=['quarter', 'time_to_sale'], ascending=True)
+        timeline_text = timeline + ' ' + str(time_num)
+
+    elif timeline == 'Month':
+        df['month'] = df['date'].dt.month
+        month_data = df[df['date'].dt.month == time_num]
+
+        # Group by 'brand_or_cat' and month, calculate the average time to sale for each combination
+        average_time_to_sale = month_data.groupby([brand_or_cat, 'month'])['time_to_sale'].mean().reset_index()
+        average_time_to_sale = average_time_to_sale.sort_values(by=['month', 'time_to_sale'], ascending=True)
+        timeline_text = month_name(time_num)
+                
+    # Create the bar plot
+    plt.figure(figsize=(12, 6))
+    bars = plt.bar(average_time_to_sale[brand_or_cat], average_time_to_sale['time_to_sale'].dt.days)
+    # for bar in bars:   #replace this with quantitiy sold
+    #     plt.text(bar.get_x() + bar.get_width() / 2, bar.get_height(), str(int(bar.get_height())), 
+    #              ha='center', va='bottom', fontsize=5, fontweight='bold') 
+    for bar in bars:
+        plt.text(
+            bar.get_x() + bar.get_width() / 2, 
+            bar.get_height() + 3,  # Adjust the vertical offset here
+            str(bar.get_height()),
+            ha='center', 
+            fontsize=7,  # Adjust fontsize here
+            fontweight='bold'
+        )
+    
+    plt.title(timeline_text + ' Average Sale Time for Each ' + brand_or_cat)
+    plt.xlabel(brand_or_cat)
+    plt.ylabel('Average Time to Sale (Days)')
+    plt.xticks(rotation=90, ha='right')  # Rotate x-axis labels for better visibility
+    plt.subplots_adjust(left=0.05)
+    right_adjust = 0.1  # Modify this value to adjust the right side
+    plt.subplots_adjust(right=.95)
+    plt.subplots_adjust(bottom=0.2)
+    plt.xlim(left=-0.5) #, right=len(average_time_to_sale[brand_or_cat])-0.5
+    plt.tight_layout()
+    plt.show()
+average_sales('Category', 'Month', 5)
+
+
+#need to combine shipping and item price value, then create a total $ for each category
+#currently only have total count
+#how would i adjust the graphs, to change to quarter, year or month, which quarter, year or month, which graph, etc
+#Dropdown menu for quarter year or month, NEEDS TO BE DONE IN GUI PROGRAM
+#use arrows to change to which exact quarter year or month,
+#####################################################################
+
+#NOW THIS WORKS WITH ONE SINGLE DATASHEET FROM DEPOP, NOW NEED TO FIGURE OUT HOW TO COMBINE MULTIPLE OTHER WEBSITES INTO ONE DATASHEET TO COMBINE THE STATS
+#BUT THIS IS A GREAT START AND AM NOW FINISHED WITH THIS
+#ONLY THING LEFT ON THIS IS TO MAKE IT LOOK NICE, BUT THAT WILL BE NEEDING JUST COLORS AND STUFF, MAYBE LIKE CHANGE THE COLORS TO A NICE GRAY ONE
