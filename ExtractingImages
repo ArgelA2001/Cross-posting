@@ -1,0 +1,92 @@
+
+import os
+from os import listdir
+from PIL import Image
+import numpy as np
+import sys
+import os
+import csv
+import requests
+import os
+import xlsxwriter
+import openpyxl
+from openpyxl import load_workbook
+import sqlite3
+
+for num in range(1,10000):
+
+    image_dir = 'D:\Selenium_python2\Pic_folder\depop_pics' 
+    image_files = [f for f in os.listdir(image_dir) if f.startswith(str(num) + '_picture_')]
+    
+    print(num)
+    print('   ')
+    if len(image_files) == 0:
+        break
+    
+    for image in image_files:
+        # driver.find_element('xpath', '//*[@id="imageInput"]').send_keys("D:\\Selenium_python2\\Pic_folder\\" + current_images +"\\" + image)
+        print(image)
+        
+        # pstart += 1
+
+image_list = []
+count = 0
+#2nd thing you have to change
+pic_folder = "Pic_folder"
+pic_file = "depop_pics"
+folder_dirr = "D:\\SeleniumPython2\\" + pic_folder + "\\" + pic_file
+
+def db_pics():
+    id_num = 1
+    conn = sqlite3.connect("D:\Selenium_python2\Depop_database.db")
+
+    # Create a new cursor to execute queries against the database
+    cursor = conn.cursor()
+    total_count_of_rows = cursor.execute("SELECT COUNT(*) FROM depop_inventory").fetchone()
+    print(total_count_of_rows[0]) 
+    for i in range(total_count_of_rows[0]):
+        db_images = cursor.execute("SELECT dp_images FROM depop_inventory WHERE id = " + str(id_num) + ";").fetchone()
+        db_image_list = db_images[0].split('; ')
+
+        print(len(db_image_list))
+        for i, image in enumerate(db_image_list):
+            filename = f"{id_num}_picture_{i}_.jpg"
+            filepath = os.path.join("D:\Selenium_python2\Pic_folder\depop_pics", filename)
+
+            # Download the picture
+            response = requests.get(image)
+            open(filepath, 'wb').write(response.content)
+
+            # Upload the picture
+            upload_url = image
+            files = {'picture': open(filepath, 'rb')}
+            response = requests.post(upload_url, files=files)
+        
+        id_num += 1
+
+# use this one over the top one
+folder = "D:\Selenium_python2\Pic_folder\\depop_pics"
+for images in os.listdir(folder):
+ 
+    # check if the image ends with png
+    if (images.endswith(".JPG")):
+        image_list.append(images)
+
+    else: 
+        print("oops")
+    count += 1
+# print(count)
+count = 0
+
+# # print(image_list)
+# # print(35 * 2)
+
+
+# sub_category_option = 'Hoodie'
+# if sub_category_option == 'T-Shirts':
+#     sub_category_option = 'Short Sleeve T-Shirts'
+# elif sub_category_option in ['Sweatshirts', 'Hoodie']:
+#     sub_category_option = 'Sweatshirts & Hoodies'
+# print(sub_category_option)
+
+# db_pics()
