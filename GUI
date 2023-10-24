@@ -1,0 +1,1406 @@
+import tkinter as tk
+from tkinter import PhotoImage
+import os
+from tkinter import *
+from tkinter import ttk
+from tkinter import messagebox
+from PIL import ImageTk, Image, ImageOps
+from tkinter import filedialog
+
+window = tk.Tk()
+window.title("Name")
+window.configure(bg="#333333")
+
+screen_width = window.winfo_screenwidth()
+screen_height = window.winfo_screenheight()
+
+window_scale_length = .85
+window_height_scale = 2.6
+window_width = int(screen_width * window_scale_length)
+window_height = int(screen_height // window_height_scale)
+window.maxsize(window_width, window_height)
+window.minsize(window_width, window_height)
+window.geometry(f"{window_width}x{window_height}+0+{screen_height//2}")
+
+button_labels = ["Home", "Post", "Cross Post", "Relisting/Organizer", "Review", "Follow", 'Item Finder' ,'Statistics']
+
+smaller_icon_labels = {}
+selected_platforms = []
+
+def dp_button_image(x_axis, y_axis):
+    global dp_image, dp_img, dp_button
+    dp_button = tk.Button(window, highlightthickness=0, relief="raised", command=dp_button_click)
+    dp_image = Image.open("D:\Selenium_python2\SoftwarePics\DepopProfilePic.png")
+    dp_re_image = dp_image.resize((150, 150))
+    dp_img = ImageTk.PhotoImage(dp_re_image)
+    dp_button.config(image=dp_img, borderwidth=0, highlightthickness=0)
+    dp_button.place(x=x_axis, y=y_axis)
+
+def gr_button_image(x_axis, y_axis):
+    global gr_image, gr_img, gr_button
+    gr_button = tk.Button(window, highlightthickness=0, relief="raised", command=gr_button_click)
+    gr_image = Image.open("D:\Selenium_python2\SoftwarePics\GrailedProfilePic.png")
+    gr_re_image = gr_image.resize((150, 150))
+    gr_img = ImageTk.PhotoImage(gr_re_image)
+    gr_button.config(image=gr_img, borderwidth=0, highlightthickness=0)
+    gr_button.place(x=x_axis, y=y_axis)
+
+def posh_button_image(x_axis, y_axis):
+    global posh_image, posh_img, posh_button
+    posh_button = tk.Button(window, highlightthickness=0, relief="raised", command=posh_button_click)
+    posh_image = Image.open("D:\Selenium_python2\SoftwarePics\PoshmarkProfilePic.jpg")
+    posh_re_image = posh_image.resize((150, 150))
+    posh_img = ImageTk.PhotoImage(posh_re_image)
+    posh_button.config(image=posh_img, borderwidth=0, highlightthickness=0)
+    posh_button.place(x=x_axis, y=y_axis)
+
+def ebay_button_image(x_axis, y_axis):
+    global ebay_img, ebay_image, ebay_button
+    ebay_button = tk.Button(window, highlightthickness=0, relief="raised", command=ebay_button_click)
+    ebay_image = Image.open("D:\Selenium_python2\SoftwarePics\EbayProfilePic.jpg")
+    ebay_re_image = ebay_image.resize((150, 150))
+    ebay_img = ImageTk.PhotoImage(ebay_re_image)
+    ebay_button.config(image=ebay_img, borderwidth=0, highlightthickness=0)
+    ebay_button.place(x=x_axis, y=y_axis)
+
+def mercari_button_image(x_axis, y_axis):
+    global mercari_img, mercari_image, mercari_button
+    mercari_button = tk.Button(window, highlightthickness=0, relief="raised", command=mercari_button_click)
+    mercari_image = Image.open("D:\Selenium_python2\SoftwarePics\MercariProfilePic.webp")
+    mercari_re_image = mercari_image.resize((150, 150))
+    mercari_img = ImageTk.PhotoImage(mercari_re_image)
+    mercari_button.config(image=mercari_img, borderwidth=0, highlightthickness=0)
+    mercari_button.place(x=x_axis, y=y_axis)
+
+def ou_button_image(x_axis, y_axis):
+    global ou_img, ou_image, ou_button
+    ou_button = tk.Button(window, highlightthickness=0, relief="raised", command=ou_button_click)
+    ou_image = Image.open("D:\Selenium_python2\SoftwarePics\OfferUpProfilePic.png")
+    ou_re_image = ou_image.resize((150, 150))
+    ou_img = ImageTk.PhotoImage(ou_re_image)
+    ou_button.config(image=ou_img, borderwidth=0, highlightthickness=0)
+    ou_button.place(x=x_axis, y=y_axis)
+
+#add button images to all of these and just adjust the arguments
+
+def posting_layout():
+    global ou_button, mercari_button, dp_button, gr_button, ebay_button, posh_button
+    global posting_title, start_button, smaller_icon_labels
+    global dp_state, gr_state, posh_state, ebay_state, mercari_state, ou_state
+    global dp_button_click, gr_button_click, ebay_button_click, posh_button_click, mercari_button_click, ou_button_click
+    iterator = 0
+    smaller_icon_labels = {}
+    selected_platforms = []
+    dp_state = False
+    gr_state = False
+    posh_state = False
+    ebay_state = False
+    mercari_state = False
+    ou_state = False
+    def toggle_button_state(button, state, img):
+        nonlocal iterator, selected_platforms
+        if state:
+            button.config(relief="sunken", bg="gray")
+            resized_image = img.resize((100, 100))
+            resized_photo = ImageTk.PhotoImage(resized_image)
+            smaller_icon_label = tk.Label(window, image=resized_photo, borderwidth=0, highlightthickness=0)
+            smaller_icon_label.place(x=400 + (iterator * 125), y=700)
+            smaller_icon_label.image = resized_photo
+            smaller_icon_labels[button] = smaller_icon_label
+            selected_platforms.append(button)
+            iterator += 1
+        else:
+            button.config(relief="raised", bg="SystemButtonFace")
+            if button in smaller_icon_labels:
+                iterator -= 1
+                smaller_icon_label = smaller_icon_labels.pop(button)
+                smaller_icon_label.destroy()
+                for i, lbl in enumerate(smaller_icon_labels.values()):
+                    x_pos = 400 + (i * 125)
+                    lbl.place(x=x_pos, y=700)
+
+    def start_program():
+        if len(selected_platforms) < 1:
+            messagebox.showwarning("Warning", "Please select at least one platform.")
+        else:
+            print("Starting the program...")
+            if dp_state == True:
+                print('depop')
+                remove_posting_cross_posting_layout()
+                posting2_layout()
+            if gr_state == True:
+                print('grailed')
+                #create filter for this showing that needs to be 60 character limit
+                #as soon as grailed turns true, put that warning label up somewhere on the screen, only when clicked
+            if posh_state == True:
+                print('poshmark')
+            if ebay_state == True:
+                print('ebay')
+            if mercari_state == True:
+                print('mercari')
+            if ou_state == True:
+                print('Offer up')
+        # if dp_state:
+        #   DepopPoster.py
+        # if gr_state:
+        #     GrailedPoster.py
+        # if posh_state:
+        #     # PoshPoster.py
+        # if ebay_state:
+        #     # EbayPoster.py
+        # if mercari_state:
+        #     # MercariPoster.py
+        # if ou_state:
+        #     # OuPoster.py 
+
+    posting_title = tk.Label(window, text="Posting", font=("Verdana", 25), bg='gray', fg="red")
+    posting_title.place(x=670, y=50)
+    start_button = tk.Button(window, text="Start", font=("Tahoma", 20), command=start_program, width=10, height=2)
+    start_button.place(x=670, y=850)
+
+    def dp_button_click():
+        global dp_state
+        dp_state = not dp_state
+        toggle_button_state(dp_button, dp_state, dp_image)
+    def gr_button_click():
+        global gr_state
+        gr_state = not gr_state
+        toggle_button_state(gr_button, gr_state, gr_image)
+    def posh_button_click():
+        global posh_state
+        posh_state = not posh_state
+        toggle_button_state(posh_button, posh_state, posh_image)
+    def ebay_button_click():
+        global ebay_state
+        ebay_state = not ebay_state
+        toggle_button_state(ebay_button, ebay_state, ebay_image)
+    def mercari_button_click():
+        global mercari_state
+        mercari_state = not mercari_state
+        toggle_button_state(mercari_button, mercari_state, mercari_image)
+    def ou_button_click():
+        global ou_state
+        ou_state = not ou_state
+        toggle_button_state(ou_button, ou_state, ou_image)
+
+    dp_button_image(400, 150)
+    gr_button_image(700, 150)
+    posh_button_image(1000, 150)
+    ebay_button_image(400, 350)
+    mercari_button_image(700, 350)
+    ou_button_image(1000, 350)
+    
+    def update_start_button_color():
+        # print("len(smaller_icon_labels) " + str(len(smaller_icon_labels)))
+        if len(smaller_icon_labels) >= 1:
+            start_button.config(bg="green")
+        else:
+            start_button.config(bg="red")
+        window.after(100, update_start_button_color)
+    update_start_button_color()
+
+def posting2_layout():
+    global delete_post_button_widget_list, text_entry_widget_list, price_entry_widget_list, add_image_widget_list, previous_button_widget_list, next_button_widget_list, image_label_widget_list, delete_button_widget_list, number_of_pics_entry_list
+
+    global start_button, listing_index, fill_in_post, current_photo_index, overall_photo_list
+    def start_excel_info():
+        # ExtractingImages.py
+        # CreatingPostFromScratch.py
+
+        print('starting the excel file making')
+    def auto_fill_files():
+        # Extract_info_from_excel.py
+        print('auto fill excel files')
+
+    fill_in_post = tk.Label(window, text="Fill in Post", font=("Verdana", 25), bg='gray', fg="red")
+    fill_in_post.place(x=670, y=50)
+
+    start_button = tk.Button(window, text="Start", font=("Tahoma", 20), command=start_excel_info, width=10, height=2)
+    start_button.place(x=670, y=850)
+
+    
+    #will have to grab the create post from scratch
+    # - user has to organize all the pics in the file before
+    # -- can either make it easy for each post, or enter the number of pics per file manually before entering the file,
+    #     -----program will read the number per file using a for loop, after I extract the number of pic list based on info given to me, then enter according to that
+    #     ----also add way to just remove all the files and leave the number of pictures, or leave the text, be able to remove 1 at a time
+
+
+################################    
+    # all this would be the script i need to make to replicated this over and over, 
+    # would just have to make constraints or use an iterator to multiply the x value y values will be the same for this
+#--------------------------------################################################################
+    current_photo_index = 0
+    listing_index = -1
+
+    overall_photo_list = []
+    current_showing_photo_list = []  
+    number_of_pic_list = []
+    text_entry_text_list = []
+    price_entry_text_list = []
+    number_of_pics_entry_list = []
+
+    text_entry_widget_list = []
+    price_entry_widget_list = []
+    add_image_widget_list = []
+    previous_button_widget_list = []
+    next_button_widget_list = []
+    image_label_widget_list = []
+    delete_button_widget_list = []
+    delete_post_button_widget_list = []
+
+    def add_scrollbar(root):
+        global photo_index, add_another_row_number, add_another_col_number, i, total_listing, index_for_row, col_decrease, add_other_post_layout, post_number, delete_post_button
+        global delete_post_button_widget_list, text_entry_widget_list, price_entry_widget_list, add_image_widget_list, previous_button_widget_list, next_button_widget_list, image_label_widget_list, delete_button_widget_list, number_of_pics_entry_list
+        col_decrease = -1
+        photo_index = 0
+
+        def add_image(row_loc, column_loc):
+            global listing_index, actual_row, actual_col
+            post_number = ((row_loc // 2) * 4) + column_loc
+            filepaths = filedialog.askopenfilenames()
+            for filepath in filepaths:
+                image = Image.open(filepath)
+                image = image.resize((120, 120))  # Adjust the size as needed
+                photo = ImageTk.PhotoImage(image)
+                image_label = tk.Label(content_frame, image=photo, borderwidth=0, highlightthickness=0)
+                image_label.image = photo
+                overall_photo_list[post_number].append(image_label)
+                print('new image label' + str(overall_photo_list[post_number]))
+                new_pic_number = number_of_pic_list[post_number] + 1
+                number_of_pic_list[post_number] = new_pic_number
+            overall_photo_list[post_number][0].grid(row=row_loc * 4 + 3, column=column_loc)
+            current_showing_photo_list[post_number] = overall_photo_list[post_number][0]
+            # number_of_pic_list[post_number].delete(0, 'end')
+            print('  ')
+            print('pic number list ' + str(number_of_pic_list[post_number]))
+            print(' ')
+            number_of_pics_entry_list[post_number].delete(0, 'end')
+            number_of_pics_entry_list[post_number].insert(0, str(number_of_pic_list[post_number]))
+
+        def show_next_image(row_loc, column_loc):
+            global current_index
+            global current_photo_pos, overall_photo_list, photo_index
+            post_number = ((row_loc // 2) * 4) + column_loc
+            try:
+                current_index = (photo_index + 1) % len(overall_photo_list[post_number])
+            except:
+                number_of_pics_entry_list[post_number].delete(0, 'end')
+                number_of_pics_entry_list[post_number].insert(0, '0') 
+                print(number_of_pic_list)
+                extracting_pic_text()
+                pass
+            prev_index = (current_index - 1) % len(overall_photo_list[post_number])
+            current_photo_pos = overall_photo_list[post_number] 
+            current_photo_pos[current_index].grid(row=row_loc * 4 + 3, column=column_loc)
+            current_showing_photo_list[post_number] = current_photo_pos[current_index]
+            print('current photo ' + str(current_photo_pos[current_index]))
+            print(current_showing_photo_list)
+            photo_index = (photo_index + 1) % len(overall_photo_list[post_number])
+            if len(overall_photo_list[post_number]) > 1:
+                prev_photo = overall_photo_list[post_number][prev_index]
+                prev_photo.grid_forget()
+
+        def show_previous_image(row_loc, column_loc):
+            global current_index
+            global current_photo_pos, overall_photo_list, photo_index
+            post_number = ((row_loc // 2) * 4) + column_loc
+            current_index = (photo_index - 1) % len(overall_photo_list[post_number]) 
+            prev_index = (current_index + 1) % len(overall_photo_list[post_number])
+            current_photo_pos = overall_photo_list[post_number] 
+            current_photo_pos[current_index].grid(row=row_loc * 4 + 3, column=column_loc)
+            current_showing_photo_list[post_number] = current_photo_pos[current_index]
+            print('current photo ' + str(current_photo_pos[current_index]))
+            print(current_showing_photo_list)
+            photo_index = (photo_index - 1) % len(overall_photo_list[post_number])
+            if len(overall_photo_list[post_number]) > 1:
+                prev_photo = overall_photo_list[post_number][prev_index]
+                prev_photo.grid_forget()
+
+        def delete_picture(row_loc, column_loc):
+            global current_photo_pos, current_index, post_number
+            print(' ')
+            extracting_price_text()
+            print(' ')
+            post_number = ((row_loc // 2) * 4) + column_loc
+            pic_to_remove = current_showing_photo_list[post_number]
+            if pic_to_remove in overall_photo_list[post_number]:
+                overall_photo_list[post_number].remove(pic_to_remove)
+                pic_to_remove.grid_forget()
+                new_pic_number = number_of_pic_list[post_number] - 1
+                number_of_pic_list[post_number] = new_pic_number
+            show_next_image(row_loc, column_loc)
+            number_of_pics_entry_list[post_number].delete(0, 'end')
+            number_of_pics_entry_list[post_number].insert(0, str(number_of_pic_list[post_number])) 
+            # extracting_pic_text()   
+            # extracting_title_text()
+            printing_items()
+            return post_number
+        
+        def extracting_pic_text():
+            pic_list = []
+            for num_pic in number_of_pics_entry_list:
+                num_text = num_pic.get()
+                pic_list.append(num_text)
+            print(pic_list)
+        
+        def extracting_title_text():
+            for text in text_entry_text_list[:]:
+                text_entry_text_list.remove(text)
+            for text_pic in text_entry_widget_list:
+                the_text = text_pic.get('1.0', 'end')
+                the_text = the_text.replace('\n', ' ')
+                the_text = the_text.replace('\t', '   ')
+                text_entry_text_list.append(the_text)
+            print(text_entry_text_list)
+        
+        def extracting_price_text():
+            for text in price_entry_text_list[:]:
+                price_entry_text_list.remove(text)
+            for price in price_entry_widget_list:
+                the_text = price.get()
+                price_entry_text_list.append(the_text)
+            print(price_entry_text_list)
+        
+        frame = tk.Frame(root, width=300, height=200, bg='gray')
+        frame.place(x=370, y=110, height = 730, width = 800)
+        canvas = tk.Canvas(frame, bg='gray')
+        canvas.place(relx=0, rely=0, relwidth=1, relheight=1)
+        scrollbar = tk.Scrollbar(frame, command=canvas.yview)
+        scrollbar.place(relx=1, rely=0, relheight=1, anchor=tk.NE)
+        canvas.configure(yscrollcommand=scrollbar.set)
+        content_frame = tk.Frame(canvas)
+        canvas.create_window((0, 0), window=content_frame, anchor=tk.NW)
+        content_frame.grid_columnconfigure(4, weight=1)
+
+        def printing_items():
+            global add_another_row_number, add_another_col_number, i
+            print('i ' + str(i))
+            print(' col ' + str(add_another_col_number))
+            print(' row ' + str(add_another_row_number))
+            print(len(text_entry_widget_list))
+            print(index_for_row)
+            extracting_title_text()
+        
+        def delete_current_post(row_loc, column_loc):
+            global w
+            global delete_post_button, index_for_row, add_image_button, previous_button, number_of_pics_entry, price_pic_entry, next_button, image_label, delete_button, title_text, col_decrease
+            post_number = ((row_loc // 2) * 4) + column_loc
+            print('post_number ' + str(post_number))
+            total_list = [add_image_widget_list, previous_button_widget_list, number_of_pics_entry_list, price_entry_widget_list, next_button_widget_list, delete_button_widget_list, image_label_widget_list, text_entry_widget_list, delete_post_button_widget_list]
+            try:
+                text_entry_widget_list[post_number].grid_forget()
+                price_entry_widget_list[post_number].grid_forget()
+                add_image_widget_list[post_number].grid_forget()
+                previous_button_widget_list[post_number].grid_forget()
+                next_button_widget_list[post_number].grid_forget()
+                image_label_widget_list[post_number].grid_forget()
+                delete_button_widget_list[post_number].grid_forget()
+                number_of_pics_entry_list[post_number].grid_forget()
+                delete_post_button_widget_list[post_number].grid_forget()
+            except:
+                print('pass')
+                # remove_post_layout.invoke()
+            update_label('minus', 'postnum', post_number)
+
+            count = 0
+            post_count = 0
+            for ind_list in total_list:
+                for i, widget in enumerate(ind_list):
+                    print(' i ' + str(i))
+                    if i >= post_number:
+                        print(' have to move ')
+                        new_column = i % 4
+                        if new_column == 0:
+                            #change the row and make column == 3
+                            new_row = 1 #previous row - 1
+                        else:
+                            new_column -= 1
+                        widget.grid_configure(column = new_column)                                                                                                                                                                                                                                                                                                                                                                  
+            
+            # for ind_list in total_list:
+            #     count = 0
+            #     for i, widget in enumerate(ind_list):
+                    
+            #         if i >= post_number:
+            #             print('widget' + str(widget))
+            #             print('count ' + str(count))
+            #             widget.grid_configure(column = column_loc + count)
+            #             count += 1
+
+            return post_number
+
+        def posting2_listing_layout(row, row_offset, col, col_offset):
+            global index_for_row, add_image_button, previous_button, number_of_pics_entry, price_pic_entry, next_button, image_label, delete_button, title_text, col_decrease, delete_post_button
+            global delete_post_button_widget_list, text_entry_widget_list, price_entry_widget_list, add_image_widget_list, previous_button_widget_list, next_button_widget_list, image_label_widget_list, delete_button_widget_list, number_of_pics_entry_list
+            for row_index in range(row_offset, row + row_offset):
+                for col_index in range(col_offset, col + col_offset):
+                    actual_row = row_index * 2  
+                    actual_col = col_index  
+
+                    add_image_button = tk.Button(content_frame, text="Add Images", command=lambda r=actual_row, c=actual_col: add_image(r, c))
+                    add_image_button.grid(row=actual_row * 4, column=actual_col, padx=61, pady=3)
+                    add_image_widget_list.append(add_image_button)
+
+                    previous_button = tk.Button(content_frame, text="Previous", command=lambda r=actual_row, c=actual_col: show_previous_image(r, c))
+                    previous_button.grid(row=actual_row * 4 + 1, column=actual_col, padx=10, pady=5, sticky='w')
+                    previous_button_widget_list.append(previous_button)
+
+                    number_of_pics_entry = tk.Entry(content_frame, width=2)
+                    number_of_pics_entry.grid(row=actual_row * 4 + 1, column=actual_col, padx=5, pady=3)
+                    number_of_pics_entry.insert(0, 0)
+                    number_of_pics_entry_list.append(number_of_pics_entry)
+
+                    price_pic_entry = tk.Entry(content_frame, width=3)
+                    price_pic_entry.grid(row=actual_row * 4 + 1, column=actual_col, padx=50, pady=3, sticky='e')
+                    price_entry_widget_list.append(price_pic_entry)
+                
+                    next_button = tk.Button(content_frame, text="Next", command=lambda r=actual_row, c=actual_col: show_next_image(r, c))
+                    next_button.grid(row=actual_row * 4 + 1, column=actual_col, padx=(2, 5), pady=3, sticky='e')
+                    next_button_widget_list.append(next_button)
+                    
+                    delete_post_button = tk.Button(content_frame, text='X', command=lambda r=actual_row, c=actual_col: (delete_current_post(r, c), decrease_row_number()))
+                    delete_post_button.grid(row=actual_row * 4 + 4, column=actual_col, sticky='ne')
+                    delete_post_button_widget_list.append(delete_post_button)
+
+                    image_label = tk.Label(content_frame, borderwidth=0, highlightthickness=0)
+                    image_label.grid(row=actual_row * 4 + 3, column=actual_col, padx=(2, 5), pady=50)
+                    image_label_widget_list.append(image_label)
+                    
+                    delete_button = tk.Button(content_frame, text='X', borderwidth=0, highlightthickness=0, command=lambda r=actual_row, c=actual_col: delete_picture(r, c), fg='red')
+                    delete_button.grid(row=actual_row * 4 + 3, column=actual_col, padx=20, sticky='ne')
+                    delete_button_widget_list.append(delete_button)
+
+                    title_text = tk.Text(content_frame, font=("Times New Roman", 10), height=4, width=24)
+                    title_text.grid(row=actual_row * 4 + 4, column=actual_col, padx=(2, 5), pady=5)
+                    text_entry_widget_list.append(title_text)
+
+                    number_of_pic_list.append(0)
+                    overall_photo_list.append([])
+                    current_showing_photo_list.append('')
+        index_for_row = 1
+        posting2_listing_layout(index_for_row, 0, 4 ,0)
+        
+        add_another_col_number = 3 
+        add_another_row_number = 1
+        i = 0
+        printing_items()
+
+        def increment_row_number():
+            global add_another_row_number, add_another_col_number, i, text_entry_widget_list
+            add_another_row_number = int(len(text_entry_widget_list) // 4)
+            add_another_col_number = int(len(text_entry_widget_list) % 4) 
+            printing_items()
+
+        def decrease_row_number():
+            global add_another_row_number, add_another_col_number, i, text_entry_widget_list
+            add_another_row_number = int(len(text_entry_widget_list) // 4)
+            add_another_col_number = int(len(text_entry_widget_list) % 4) + 1
+            # printing_items()
+        
+        def update_label(var, var2, num_post):
+            global post_number, delete_post_button_widget_list, text_entry_widget_list, price_entry_widget_list, add_image_widget_list, previous_button_widget_list, next_button_widget_list, image_label_widget_list, delete_button_widget_list, number_of_pics_entry_list
+            
+            if var == 'minus':
+                if var2 == 'last':
+                    the_index_to_remove = -1
+                    total_listing = str(len(text_entry_widget_list)- 1) 
+                    text_entry_widget_list = text_entry_widget_list[:the_index_to_remove] 
+                    price_entry_widget_list = price_entry_widget_list[:the_index_to_remove] 
+                    add_image_widget_list = add_image_widget_list[:the_index_to_remove]
+                    previous_button_widget_list = previous_button_widget_list[:the_index_to_remove]
+                    next_button_widget_list = next_button_widget_list[:the_index_to_remove]
+                    image_label_widget_list = image_label_widget_list[:the_index_to_remove] 
+                    delete_button_widget_list = delete_button_widget_list[:the_index_to_remove] 
+                    number_of_pics_entry_list = number_of_pics_entry_list[:the_index_to_remove] 
+                    delete_post_button_widget_list = delete_post_button_widget_list[:the_index_to_remove]
+                elif var2 == 'postnum':
+                    the_index_to_remove = num_post
+                    total_listing = str(len(text_entry_widget_list)- 1) 
+                    text_entry_widget_list = text_entry_widget_list[:the_index_to_remove] + text_entry_widget_list[the_index_to_remove + 1:]
+                    price_entry_widget_list = price_entry_widget_list[:the_index_to_remove] + price_entry_widget_list[the_index_to_remove + 1:]
+                    add_image_widget_list = add_image_widget_list[:the_index_to_remove] + add_image_widget_list[the_index_to_remove + 1:]
+                    previous_button_widget_list = previous_button_widget_list[:the_index_to_remove] + previous_button_widget_list[the_index_to_remove + 1:]
+                    next_button_widget_list = next_button_widget_list[:the_index_to_remove] + next_button_widget_list[the_index_to_remove + 1:]
+                    image_label_widget_list = image_label_widget_list[:the_index_to_remove] + image_label_widget_list[the_index_to_remove + 1:]
+                    delete_button_widget_list = delete_button_widget_list[:the_index_to_remove] + delete_button_widget_list[the_index_to_remove + 1:]
+                    number_of_pics_entry_list = number_of_pics_entry_list[:the_index_to_remove] + number_of_pics_entry_list[the_index_to_remove + 1:]
+                    delete_post_button_widget_list = delete_post_button_widget_list[:the_index_to_remove] + delete_post_button_widget_list[the_index_to_remove + 1:]
+            elif var == 'plus':
+                total_listing = str(len(text_entry_widget_list) + 1)
+            print('total_listing' + str(total_listing))
+            total_amt_of_listings.config(text=total_listing)
+            printing_items()
+
+        def posting2_listing_remove_layout():#row_loc, col_loc
+            global index_for_row, add_image_button, previous_button, number_of_pics_entry, price_pic_entry, next_button, image_label, delete_button, title_text, col_decrease, delete_post_button
+            text_entry_widget_list[col_decrease].grid_forget()
+            price_entry_widget_list[col_decrease].grid_forget()
+            add_image_widget_list[col_decrease].grid_forget()
+            previous_button_widget_list[col_decrease].grid_forget()
+            next_button_widget_list[col_decrease].grid_forget()
+            image_label_widget_list[col_decrease].grid_forget()
+            delete_button_widget_list[col_decrease].grid_forget()
+            number_of_pics_entry_list[col_decrease].grid_forget()
+            delete_post_button_widget_list[col_decrease].grid_forget()
+            #would set this to new positions but would have to shift all the currentn
+            # for i, row in enumerate(grid):
+            #     for j, button in enumerate(row):
+            #         # Calculate the new position based on the updated grid size
+            #         new_position = (i, j)
+            #         # Update the button's position on the grid
+            #         button.set_position(new_position)
+
+        
+        def validate_input(new_text):
+            if not new_text.isdigit():
+                return False
+            return True
+            
+        the_column = 1
+        add_other_post_layout = tk.Button(window, text="+", font=("Tahoma", 12))
+        add_other_post_layout.configure(command=lambda: [update_label('plus', 'dont', 'worry'), increment_row_number(), posting2_listing_layout(index_for_row, add_another_row_number, the_column, add_another_col_number)])
+        add_other_post_layout.place(x=1050, y=30)
+
+        remove_post_layout = tk.Button(window, text="-", font=("Tahoma", 12), width = 2)
+        remove_post_layout.configure(command=lambda: [decrease_row_number(), posting2_listing_remove_layout(), update_label('minus', 'last', 'oops'), remove_post_amount_button()])#update_label(),  r=actual_row, c=actual_col
+        remove_post_layout.place(x=950, y=30)
+
+        validate_cmd = window.register(validate_input)
+        amt_to_add_text = tk.Entry(window, validate="key", validatecommand=(validate_cmd, '%P'), font=("Tahoma", 12), width=3)
+        amt_to_add_text.place(x=1000, y=30)
+
+        def remove_post_amount_button():
+            #still needs some work on this
+            the_number= amt_to_add_text.get()
+            print('the number' + str(the_number))
+            if the_number == '':
+                the_number = 1
+            else:
+                for i in range(int(the_number)):
+                    remove_post_layout.invoke()
+
+        total_listing = str(len(text_entry_widget_list))
+        total_amt_of_listings = tk.Label(window, text=total_listing, font=("Verdana", 25), bg='gray', fg="red")
+        total_amt_of_listings.place(x=1100, y=30)
+
+        def update_scroll_region(event):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+        content_frame.bind("<Configure>", update_scroll_region)
+    add_scrollbar(window)
+
+    #the layout listing works good for the first row, need to create the second row then figure out the deal with the pics since they are not adding now
+    #and once i find out the issue for that then can figure out how to create a scrollbar and make it so that it is 8 showing at once max, or 10 if you like that 
+    ################################################################################
+    #next is learning how to make multiple slots for pics
+    # Plus button to add more pictures ##keep this but you want to make it so that by pressing the plus button, you add another column of pictures, number of pics, adn 
+    ################################################################################
+
+# this needs to be changed to accept the file and make it so that if there is a numbered order, it can do it automaticall, the above is only for individuals
+
+def cross_posting_layout():
+    global ou_button, mercari_button, dp_button, gr_button, ebay_button, posh_button
+    global posting_title, start_button1, crossposting_title, smaller_icon_labels
+    global dp_state, gr_state, posh_state, ebay_state, mercari_state, ou_state
+    global dp_button_click, gr_button_click, ebay_button_click, posh_button_click, mercari_button_click, ou_button_click
+    iterator = 0
+    smaller_icon_labels = {}
+    selected_platforms = []
+    dp_state = False
+    gr_state = False
+    posh_state = False
+    ebay_state = False
+    mercari_state = False
+    ou_state = False
+    #needs to be able to identify which one is going to be the first one as well, to know where to scrape from
+    def toggle_button_state(button, state, img):
+        nonlocal iterator, selected_platforms
+        if state:
+            button.config(relief="sunken", bg="gray")
+            resized_image = img.resize((100, 100))
+            resized_photo = ImageTk.PhotoImage(resized_image)
+            smaller_icon_label = tk.Label(window, image=resized_photo, borderwidth=0, highlightthickness=0)
+    
+            smaller_icon_label.place(x=400 + (iterator * 125), y=700)
+            smaller_icon_label.image = resized_photo
+            smaller_icon_labels[button] = smaller_icon_label
+            selected_platforms.append(button)
+            iterator += 1
+        else:
+            button.config(relief="raised", bg="SystemButtonFace")
+            if button in smaller_icon_labels:
+                iterator -= 1
+                smaller_icon_label = smaller_icon_labels.pop(button)
+                smaller_icon_label.destroy()
+                for i, lbl in enumerate(smaller_icon_labels.values()):
+                    x_pos = 400 + (i * 125)
+                    lbl.place(x=x_pos, y=700)
+
+    def start_program():
+        if len(selected_platforms) < 1:
+            messagebox.showwarning("Warning", "Please select at least one platform.")
+        else:
+            print("Starting the program...")
+            print("Selected platforms:", [btn["text"] for btn in selected_platforms])
+
+        # if dp_state:
+        #   DepopDBPoster.py
+        # if gr_state:
+        #     GrailedDBPoster.py
+        # if posh_state:
+        #     # PoshDBPoster.py
+        # if ebay_state:
+        #     # EbayDBPoster.py
+        # if mercari_state:
+        #     # MercarDBiPoster.py
+        # if ou_state:
+        #     # OuDBPoster.py 
+
+    crossposting_title = tk.Label(window, text="Cross Post", font=("Verdana", 25), bg='gray', fg="red")
+    crossposting_title.place(x=670, y=50)
+    start_button1 = tk.Button(window, text="Start", font=("Tahoma", 20), command=start_program, width=10, height=2)
+    start_button1.place(x=670, y=850)
+
+    def dp_button_click():
+        global dp_state
+        dp_state = not dp_state
+        toggle_button_state(dp_button, dp_state, dp_image)
+
+    def gr_button_click():
+        global gr_state
+        gr_state = not gr_state
+        toggle_button_state(gr_button, gr_state, gr_image)
+
+    def posh_button_click():
+        global posh_state
+        posh_state = not posh_state
+        toggle_button_state(posh_button, posh_state, posh_image)
+
+    def ebay_button_click():
+        global ebay_state
+        ebay_state = not ebay_state
+        toggle_button_state(ebay_button, ebay_state, ebay_image)
+
+    def mercari_button_click():
+        global mercari_state
+        mercari_state = not mercari_state
+        toggle_button_state(mercari_button, mercari_state, mercari_image)
+
+    def ou_button_click():
+        global ou_state
+        ou_state = not ou_state
+        toggle_button_state(ou_button, ou_state, ou_image)
+
+    dp_button_image(400, 150)
+    gr_button_image(700, 150)
+    posh_button_image(1000, 150)
+    ebay_button_image(400, 350)
+    mercari_button_image(700, 350)
+    ou_button_image(1000, 350)
+
+    def update_start_button_color():
+        if len(smaller_icon_labels) >= 2:
+            start_button1.config(bg="green")
+        else:
+            start_button1.config(bg="red")
+        window.after(100, update_start_button_color)
+    update_start_button_color()
+
+def relister_layout():
+    global ou_button, mercari_button, dp_button, gr_button, ebay_button, posh_button
+    global posting_title, start_button, smaller_icon_label, relister_title, start_button
+    global dp_state, gr_state, posh_state, ebay_state, mercari_state, ou_state
+    global time_filter_dropdown, message_text, filter_by_message, add_messages_checkbox, write_reviews_checkbox
+    global dp_button_click, gr_button_click, ebay_button_click, posh_button_click
+    iterator = 0
+    smaller_icon_labels = {}
+    selected_platforms = []
+    def toggle_button_state(button, state, img):
+        global smaller_icon_label
+        if state:
+            button.config(relief="sunken", bg="gray")
+            resized_image = img.resize((100, 100))
+            resized_photo = ImageTk.PhotoImage(resized_image)
+            smaller_icon_label = tk.Label(window, image=resized_photo, borderwidth=0, highlightthickness=0)
+            smaller_icon_label.place(x=700, y=550)
+            smaller_icon_label.image = resized_photo
+            smaller_icon_labels[button] = smaller_icon_label
+            selected_platforms.append(button)
+        else:
+            button.config(relief="raised", bg="SystemButtonFace")
+            if button in smaller_icon_labels:
+                smaller_icon_label = smaller_icon_labels.pop(button)
+                smaller_icon_label.destroy()
+                for i, lbl in enumerate(smaller_icon_labels.values()):
+                    x_pos = 700 
+                    print('placed')
+                    lbl.place(x=x_pos, y=700)
+    def start_program():
+        if len(smaller_icon_labels) < 1:
+            messagebox.showwarning("Warning", "Please select at least one platform.")
+        else:
+            print('dp state ' + str(dp_state))
+            print('gr state ' + str(gr_state))
+            print('posh state ' + str(posh_state))
+            print('ebay state ' + str(ebay_state))
+            print("Starting the program...")
+            print("Selected platforms:", [btn["text"] for btn in selected_platforms])
+
+        ################################
+        # if dp_state:
+        #     DepopRelister.py
+        # if gr_state:
+        #     if price_dropper_check:
+        #         GrailedPriceDropper.py #this will include price dropping and bumping script at same time
+        #     GrailedBumper.py
+        # if posh_state:
+        #     PoshPriceDroper
+        # if ebay_state:
+        #     EbayRelister.py
+
+    relister_title = tk.Label(window, text="Relister/Organizer", font=("Verdana", 25), bg='gray', fg="red")
+    relister_title.place(x=670, y=50)
+    start_button = tk.Button(window, text="Start", font=("Tahoma", 20), command=start_program, width=10, height=2)
+    start_button.place(x=670, y=850)
+
+    def dp_button_click():
+        global dp_state, posh_state, gr_state, ebay_state, smaller_icon_label
+        try:
+            smaller_icon_label.place_forget()
+        except:
+            pass
+        if not dp_state:
+            dp_state = True
+            posh_state = False
+            gr_state = False
+            ebay_state = False
+            toggle_button_state(dp_button, dp_state, dp_image)
+        elif dp_state:
+            dp_state = False
+            posh_state = False
+            gr_state = False
+            ebay_state = False
+    def gr_button_click():
+        global dp_state, posh_state, gr_state, ebay_state, smaller_icon_label
+        try:
+            smaller_icon_label.place_forget()
+        except:
+            pass
+        if not gr_state:
+            dp_state = False
+            posh_state = False
+            gr_state = True
+            ebay_state = False
+            toggle_button_state(gr_button, gr_state, gr_image)
+        elif gr_state:
+            dp_state = False
+            posh_state = False
+            gr_state = False
+            ebay_state = False
+    def posh_button_click():
+        global dp_state, posh_state, gr_state, ebay_state, smaller_icon_label
+        try:
+            smaller_icon_label.place_forget()
+        except:
+            pass
+        if not posh_state:
+            dp_state = False
+            posh_state = True
+            gr_state = False
+            ebay_state = False
+            toggle_button_state(posh_button, posh_state, posh_image)
+        elif posh_state:
+            dp_state = False
+            posh_state = False
+            gr_state = False
+            ebay_state = False
+    def ebay_button_click():
+        global dp_state, posh_state, gr_state, ebay_state, smaller_icon_label
+        try:
+            smaller_icon_label.place_forget()
+        except:
+            pass
+        if not ebay_state:
+            dp_state = False
+            posh_state = False
+            gr_state = False
+            ebay_state = True
+            toggle_button_state(ebay_button, ebay_state, ebay_image)
+        elif ebay_state:
+            dp_state = False
+            posh_state = False
+            gr_state = False
+            ebay_state = False
+    dp_button_image(400, 150)
+    gr_button_image(700, 150)
+    posh_button_image(1000, 150)
+    ebay_button_image(400, 350)
+    def update_start_button_color():
+        global posh_state, dp_state, gr_state, ebay_state
+        states = {}
+        states["posh_state"] = posh_state
+        states["dp_state"] = dp_state
+        states["gr_state"] = gr_state
+        states["ebay_state"] = ebay_state
+        true_count = sum(states.values())
+        # print(true_count)
+        if true_count == 1:
+            start_button.config(bg="green")
+        else:
+            start_button.config(bg="red")
+        window.after(100, update_start_button_color)
+    update_start_button_color()
+
+def review_layout():
+    global ou_button, mercari_button, dp_button, gr_button, ebay_button, posh_button
+    global posting_title, start_button, smaller_icon_labels, review_title, start_button
+    global dp_state, gr_state, posh_state, ebay_state, mercari_state, ou_state, smaller_icon_label, smaller_icon_labels
+    global time_filter_dropdown, message_text, filter_by_message, add_messages_checkbox, write_reviews_checkbox
+    global dp_button_click, gr_button_click, ebay_button_click, posh_button_click, mercari_button_click, ou_button_click
+    iterator = 0
+    smaller_icon_labels = {}
+    selected_platforms = []
+    dp_state = False
+    gr_state = False
+    posh_state = False
+    ebay_state = False
+    mercari_state = False
+    ou_state = False
+    def toggle_button_state(button, state, img):
+        nonlocal iterator, selected_platforms
+        if state:
+            button.config(relief="sunken", bg="gray")
+            resized_image = img.resize((100, 100))
+            resized_photo = ImageTk.PhotoImage(resized_image)
+            smaller_icon_label = tk.Label(window, image=resized_photo, borderwidth=0, highlightthickness=0)
+            smaller_icon_label.place(x=400 + (iterator * 125), y=550)
+            smaller_icon_label.image = resized_photo
+            smaller_icon_labels[button] = smaller_icon_label
+            selected_platforms.append(button)
+            iterator += 1
+        else:
+            button.config(relief="raised", bg="SystemButtonFace")
+            if button in smaller_icon_labels:
+                iterator -= 1
+                smaller_icon_label = smaller_icon_labels.pop(button)
+                smaller_icon_label.destroy()
+                for i, lbl in enumerate(smaller_icon_labels.values()):
+                    x_pos = 400 + (i * 125)
+                    lbl.place(x=x_pos, y=550)
+
+    def start_program():
+        if len(selected_platforms) < 1:
+            messagebox.showwarning("Warning", "Please select at least one platform.")
+        else:
+            print('dp state ' + str(dp_state))
+            print('gr state ' + str(gr_state))
+            print('posh state ' + str(posh_state))
+            print('ebay state ' + str(ebay_state))
+            print('mercari state ' + str(mercari_state))
+            print('ou state ' + str(ou_state))
+            print("Starting the program...")
+            print("Selected platforms:", [btn["text"] for btn in selected_platforms])
+
+            ################################
+            # if dp_state:
+            #     if review_bot_checkmark: #***
+            #         DepopAutoFeedback.py
+            #     #need to create poster to make itso that it can be without the automessanger for basic membership
+            # if gr_state:
+            #     #GrailedReview.py
+            # if posh_state:
+            #     # PoshReview.py
+            # if ebay_state:
+            #     # EbayReview.py
+            # if mercari_state:
+            #     # MercariReview.py
+            # if ou_state:
+            #     # OuReview.py
+
+    review_title = tk.Label(window, text="Review", font=("Verdana", 25), bg='gray', fg="red")
+    review_title.place(x=670, y=50)
+    start_button = tk.Button(window, text="Start", font=("Tahoma", 20), command=start_program, width=10, height=2)
+    start_button.place(x=670, y=850)
+
+    def dp_button_click():
+        global dp_state
+        dp_state = not dp_state
+        toggle_button_state(dp_button, dp_state, dp_image)
+    def gr_button_click():
+        global gr_state
+        gr_state = not gr_state
+        toggle_button_state(gr_button, gr_state, gr_image)
+    def posh_button_click():
+        global posh_state
+        posh_state = not posh_state
+        toggle_button_state(posh_button, posh_state, posh_image)
+    def ebay_button_click():
+        global ebay_state
+        ebay_state = not ebay_state
+        toggle_button_state(ebay_button, ebay_state, ebay_image)
+    def mercari_button_click():
+        global mercari_state
+        mercari_state = not mercari_state
+        toggle_button_state(mercari_button, mercari_state, mercari_image)
+    def ou_button_click():
+        global ou_state
+        ou_state = not ou_state
+        toggle_button_state(ou_button, ou_state, ou_image)
+
+    dp_button_image(400, 150)
+    gr_button_image(700, 150)
+    posh_button_image(1000, 150)
+    ebay_button_image(400, 350)
+    mercari_button_image(700, 350)
+    ou_button_image(1000, 350)
+    
+    def update_start_button_color():
+        if len(smaller_icon_labels) >= 1:
+            start_button.config(bg="green")
+        else:
+            start_button.config(bg="red")
+        window.after(100, update_start_button_color)
+    update_start_button_color()
+
+    write_reviews_var = tk.BooleanVar(value=False)
+    write_reviews_checkbox = ttk.Checkbutton(window, text="Write All Reviews", variable=write_reviews_var)
+    write_reviews_checkbox.place(x=500, y=700)
+
+    add_messages_var = tk.BooleanVar(value=False)
+    add_messages_checkbox = ttk.Checkbutton(window, text="Add Messages", variable=add_messages_var)
+    add_messages_checkbox.place(x=500, y=750)
+
+    filter_by_message = tk.Label(window, text="Filter by ")
+    filter_by_message.place(x=700, y=700)
+
+    time_options = ["1 year", "6 months", "3 months", "1 month", "2 weeks"]
+    time_filter_var = tk.StringVar()
+    time_filter_dropdown = ttk.Combobox(window, textvariable=time_filter_var, values=time_options, state='readonly')
+    time_filter_dropdown.place(x=800, y=700)
+
+    message_text = tk.Text(window, height=5, width=30)
+    message_text.place(x=800, y=750)
+
+    def toggle_dropdown():
+        if write_reviews_var.get():
+            time_filter_dropdown.configure(state="disabled")
+        else:
+            time_filter_dropdown.configure(state="normal")
+    write_reviews_var.trace("w", lambda *args: toggle_dropdown())
+
+    def toggle_textbox():
+        if add_messages_var.get():
+            message_text.configure(state="normal")
+        else:
+            message_text.configure(state="disabled")
+    add_messages_var.trace("w", lambda *args: toggle_textbox())
+
+def follow_layout():
+    global dp_button, posh_button, dp_state, posh_state, dp_img, posh_img
+    global start_button, smaller_icon_label, start_button
+    global follow_title, start_button, selected_platforms, smaller_icon_label
+    global dp_button_click, posh_button_click
+    dp_state = False
+    posh_state = False
+    def toggle_button_state(button, state, img):
+        global smaller_icon_label
+        if state:
+            button.config(relief="sunken", bg="gray")
+            resized_image = img.resize((100, 100))
+            resized_photo = ImageTk.PhotoImage(resized_image)
+            smaller_icon_label = tk.Label(window, image=resized_photo, borderwidth=0, highlightthickness=0)
+            smaller_icon_label.place(x=700, y=550)
+            smaller_icon_label.image = resized_photo
+            smaller_icon_labels[button] = smaller_icon_label
+            selected_platforms.append(button)
+        else:   
+            button.config(relief="raised", bg="SystemButtonFace")
+            if button in smaller_icon_labels:
+                smaller_icon_label = smaller_icon_labels.pop(button)
+                smaller_icon_label.destroy()
+                for i, lbl in enumerate(smaller_icon_labels.values()):
+                    x_pos = 700
+                    print('placed')
+                    lbl.place(x=x_pos, y=700)
+        # this is the smaller icon label that is still there but cant figure out how to remove the smaller icon label when using the remove posting_cross_posting_layout()
+        # everything else removes its just that one smaller_iconn_label
+    def dp_button_click():
+        global dp_state, posh_state, smaller_icon_label, smaller_icon_labels
+        try:
+            smaller_icon_label.place_forget()
+        except:
+            print('couldnt forget')
+            pass
+        try:
+            smaller_icon_labels.clear()
+        except:
+            print('couldnt clear')
+        if not dp_state:  
+            dp_state = True
+            posh_state = False
+            toggle_button_state(dp_button, dp_state, dp_image)
+        elif dp_state:
+            posh_state = False
+            dp_state = False
+
+    def posh_button_click():
+        global posh_state, dp_state, smaller_icon_label
+        try:
+            smaller_icon_label.place_forget()
+        except:
+            pass
+        if not posh_state: 
+            posh_state = True
+            dp_state = False
+            toggle_button_state(posh_button, posh_state, posh_image)
+        elif posh_state:
+            posh_state = False
+            dp_state = False
+
+    def start_program():
+        global smaller_icon_labels
+        if len(smaller_icon_labels) == 0:
+            messagebox.showwarning("Warning", "Please select at least one platform.")
+        else:
+            print('dp_state' + str(dp_state))
+            print('posh state ' + str(posh_state))
+            print("Starting the program...")
+            print("Selected platforms:", [btn["text"] for btn in selected_platforms])
+
+        ################################
+        #code for starting up the actual programs required to run it
+        # if dp_state:
+        #     if follow_clicked:
+        #         DepopFollow.py #need account name
+        #     elif unfollow_clicked:
+        #         DepopUnfollow.py #personal account
+        # if gr_state:
+        #     if follow_clicked:
+        #         GRFollow.py #need account name
+        #     elif unfollow_clicked:
+        #         GRUnfollow.py #personal account
+
+    follow_title = tk.Label(window, text="Follow", font=("Verdana", 25), bg='gray', fg="red")
+    follow_title.place(x=670, y=50)
+
+    start_button = tk.Button(window, text="Start", font=("Tahoma", 20), command=start_program, width=10, height=2)
+    start_button.place(x=670, y=850)
+    
+    dp_button_image(400, 150)
+    posh_button_image(700, 150)
+
+    def update_start_button_color():
+        states = {}
+        states["posh_state"] = posh_state
+        states["dp_state"] = dp_state
+        true_count = sum(states.values())
+        if true_count == 1:
+            start_button.config(bg="green")
+        else:
+            start_button.config(bg="red")
+        window.after(100, update_start_button_color)
+    update_start_button_color()
+
+def remove_posting_cross_posting_layout():
+    global ou_button, mercari_button, dp_button, gr_button, ebay_button, posh_button
+    global posting_title, start_button, iterator, crossposting_title, review_title, relister_title
+    global dp_state, gr_state, posh_state, ebay_state, mercari_state, ou_state, smaller_icon_label, smaller_icon_labels
+    global time_filter_dropdown, message_text, filter_by_message, add_messages_checkbox, write_reviews_checkbox
+    global dp_button_click, gr_button_click, ebay_button_click, posh_button_click, mercari_button_click, ou_button_click
+    
+    if 'ou_button' in globals():
+        ou_button.place_forget()
+    if 'mercari_button' in globals():
+        mercari_button.place_forget()
+    if 'dp_button' in globals():
+        dp_button.place_forget()
+    if 'gr_button' in globals():
+        gr_button.place_forget()
+    if 'ebay_button' in globals():
+        ebay_button.place_forget()
+    if 'posh_button' in globals():
+        posh_button.place_forget()
+    
+    iterator = 0
+    try:
+        if dp_state:
+            dp_button_click()
+    except:
+        pass
+    try:
+        if gr_state:
+            gr_button_click()
+    except:
+        pass
+    try:
+        if posh_state:
+            posh_button_click()
+    except:
+        pass
+    try:
+        if ebay_state:
+            ebay_button_click()
+    except:
+        pass
+    try:
+        if mercari_state:
+            mercari_button_click()
+    except:
+        pass
+    try:
+        if ou_state:
+            ou_button_click()
+    except:
+        pass
+
+    dp_state = False
+    gr_state = False
+    posh_state = False
+    ebay_state = False
+    mercari_state = False
+    ou_state = False
+
+    try:
+        posting_title.place_forget()
+    except:
+        pass
+    try:
+        crossposting_title.place_forget()
+    except:
+        pass
+    try:
+        review_title.place_forget()
+    except:
+        pass
+    try:
+        relister_title.place_forget()
+    except:
+        pass
+    try:
+        follow_title.place_forget()
+    except:
+        pass
+    try:
+        start_button.place_forget()
+    except:
+        pass
+    try:
+        start_button1.place_forget()
+    except:
+        pass
+    try:
+        time_filter_dropdown.place_forget()
+    except NameError:
+        pass
+    try:
+        message_text.place_forget()
+    except NameError:
+        pass
+    try:
+        filter_by_message.place_forget()
+    except NameError:
+        pass
+    try:
+        add_messages_checkbox.place_forget()
+    except NameError:
+        pass
+    try:
+        write_reviews_checkbox.place_forget()
+    except NameError:
+        pass
+    try:
+        advertise_stats.place_forget()
+    except:
+        pass
+    try: 
+        basic_statistics.place_forget()
+    except:
+        pass
+    try:
+        customer_support.place_forget()
+    except:
+        pass
+    try:
+        statistics_image.place_forget()
+    except:
+        pass
+    try:
+        auto_fill_button.place_forget()
+    except:
+        pass
+    try:
+        fill_in_post.place_forget()
+    except:
+        pass
+    try:
+        smaller_icon_label.place_forget()
+        print(smaller_icon_label)
+    except Exception as e:
+        print(e)
+        print('no smaller icon label')        
+    try:
+        sold_need_to_ship.place_forget()
+    except:
+        pass
+    try:
+        current_messages.place_forget()
+    except:
+        pass
+    try:
+        current_offers.place_forget()
+    except:
+        pass
+
+
+    try:
+        smaller_icon_labels.clear()
+        print('smaller_icon_labels' + str(len(smaller_icon_labels)))
+    except:
+        print('smaller icon labels cleared')
+
+def home_button_layout():
+    #adding data images
+    global img, advertise_stats, basic_statistics, customer_support, statistics_image, sold_need_to_ship, current_offers, current_messages
+    image = Image.open("D:\Selenium_python2\Pic_folder\IMG_3689.JPG")
+    re_image = image.resize((250,250))
+    img = ImageTk.PhotoImage(re_image)
+    statistics_image = tk.Label(window, image = img, borderwidth=0, highlightthickness=0)
+    statistics_image.place(x=950, y=20)
+        
+    advertise_stats = tk.Label(window, text="Advertise Statistics", font=("Arial Rounded MT Bold", 15), bg="red", fg="blue")
+    advertise_stats.place(x=650, y=150)
+
+    basic_statistics = tk.Label(window, text="Basic Statistics", font=("Arial Rounded MT Bold", 15), bg="red", fg="blue")
+    basic_statistics.place(x=650, y=300)
+
+    customer_support = tk.Label(window, text="Customer Support", font=("Arial Rounded MT Bold", 15), bg="red", fg="blue")
+    customer_support.place(x=650, y=900)
+
+    sold_need_to_ship = tk.Label(window, text="Sold Need To Ship", font=("Arial Rounded MT Bold", 15), bg="red", fg="blue")
+    sold_need_to_ship.place(x=400, y=550)
+    #Create code that checks available platforms to identify if there are items that havent been shipped, update those into a db to be able to filter out if one has been shipped or not
+    #Maybe apart of the solds, and mark all current as shipped, then option to refund, also option to send tracking info as well, but maybe there s af
+
+    current_offers = tk.Label(window, text="Current Offers", font=("Arial Rounded MT Bold", 15), bg="red", fg="blue")
+    current_offers.place(x=700, y=550)
+    #identifies current offers, and their respective platforms, also create their own db
+
+    current_messages = tk.Label(window, text="Messages", font=("Arial Rounded MT Bold", 15), bg="red", fg="blue")
+    current_messages.place(x=950, y=550)
+    #checks if there is any unread messages, looking for the unread sign
+
+    ################################################################
+    #IDEA IDEA IDEA
+    #add 3 sections
+#     # SOLD NEED TO SHIP
+#     # SOLD NEED TO REVIEW
+#     # MESSAGES
+#     # OFFERS
+    # for these add the website from where this needs to be interacted in
+    #create a script that will do exactly what it says, can control it from the menu, 
+    # need to ship, will have just have the option to add tracking, and link to pirate ship where the info will already by copy and pasted into the page, then up to user to click
+# correct address
+
+    # need to review, which star to review, can automatically put all to 5 stars with one press
+# can also add review message, with option to press click to put default review message, which will be saved
+
+    # messages will have the ability to just reply straight from there
+
+    # offers will have the ability to decline, message, counter offer or accept
+buttons = []
+max_label_length = max(len(label) for label in button_labels)
+
+def update_button_relief(index):
+    # Reset relief for all buttons
+    for button in buttons:
+        button.configure(relief=tk.RAISED)
+    buttons[index].configure(relief=tk.SUNKEN)
+
+def home_button_click():
+    print("Home button clicked")
+    update_button_relief(0)
+    remove_posting_cross_posting_layout()
+    home_button_layout()
+
+def posting_button_click():
+    print("Posting button clicked")
+    update_button_relief(1)
+    remove_posting_cross_posting_layout()
+    posting_layout()
+
+def cross_poster_button_click():
+    print("Cross Poster button clicked")
+    update_button_relief(2)
+    remove_posting_cross_posting_layout()
+    cross_posting_layout()
+
+def relisting_button_click():
+    print("Relisting/Menu Organizer button clicked")
+    update_button_relief(3)
+    remove_posting_cross_posting_layout()
+    relister_layout()
+
+def review_button_click():
+    print("Review button clicked")
+    update_button_relief(4)
+    remove_posting_cross_posting_layout()
+    review_layout()
+
+def follow_like_button_click():
+    print("Follow/Like button clicked")
+    update_button_relief(5)
+    remove_posting_cross_posting_layout()
+    follow_layout()
+
+def item_finder_click():
+    print('Item finder has been clicked')
+    update_button_relief(6)
+    remove_posting_cross_posting_layout()
+
+def statistics_button_click():
+    global smaller_icon_labels, dp_state, posh_state
+    print('Statistics r has been clicked')
+    update_button_relief(7)
+    remove_posting_cross_posting_layout()
+    dp_state = False
+    posh_state = False
+
+software_name_label = tk.Label(window, text="My Employee", font=("Arial Rounded MT Bold", 48), bg="#333333", fg="white")
+software_name_label.grid(row=0, column=0, padx=20, pady=10, sticky=tk.W)
+button_frame = tk.Frame(window, bg="#333333")
+button_frame.grid(row=1, column=0, padx=20, pady=10, sticky=tk.W)
+button_functions = [home_button_click, posting_button_click, cross_poster_button_click, relisting_button_click, review_button_click, follow_like_button_click, item_finder_click, statistics_button_click]
+height_meter = 1
+first_time = False
+for i, label in enumerate(button_labels):
+    if first_time == False:
+        first_time = True
+        button = tk.Button(button_frame, text=label, relief=SUNKEN, bg="#CCCCCC", fg="black", font=("Dubai Medium", 20), padx=10, pady=5, width=20, height=height_meter, command=button_functions[i])
+    button = tk.Button(button_frame, text=label, relief=RAISED, bg="#CCCCCC", fg="black", font=("Dubai Medium", 20), padx=10, pady=5, width=20, height=height_meter, command=button_functions[i])
+    button.grid(row=i, column=0, pady=10, sticky=tk.W)
+    buttons.append(button)
+
+window.mainloop()
+
+
+#create function layouts for every page
+#still need to figure out design for home screen, but that should be last, to wait and see how much info is left after all other columns said and done
+################################
+
+#so so far am able to create to use this layout for around half of all columns
+# need to create new one for statistics, item finder, home
+
+#Need to extract the sites from this to be able to filter out which programs to use
+# but overall these programs are down, at least the basic ones, now I can work on adding the required projects into them and filling them w/ the proper constraints
+
+#add filter for delay time, recommend delay time too
+
+#work on getting all the start buttons working and organized
+#all the smaller icon labels are pretty set now, just trial and error stuff for the gui
+#finish the gui today then work on implementing files and arguments tmrw,
+#save item finder and statistics for another day
+
+################################################################    
+# IDEAS IDEAS IDEAS 
+#option to add the number of pics automatically to all
+#
