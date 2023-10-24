@@ -1,0 +1,105 @@
+import time
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import Select
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.options import Options
+
+
+chrome_options = Options()
+chrome_options.add_experimental_option("detach", True)
+driver = webdriver.Chrome("D:\\Selenium_python2\\chromedriver.exe", chrome_options=chrome_options)
+driver.get("https://www.grailed.com/sell/for-sale")
+time.sleep(2)
+
+def grailed_start_up():
+    driver.find_element('xpath', '//*[@id="app"]/div[7]/div/div/div/div[2]/div/div/p[2]/a').click()
+    time.sleep(3)
+    driver.find_element('xpath', '//*[@id="app"]/div[7]/div/div/div/div[2]/div/div/button[4]').click()
+    google_email = driver.find_element('xpath', '//*[@id="email"]')
+    google_email.send_keys("argelarroyo2001@gmail.com")
+    driver.find_element('xpath', '//*[@id="password"]').send_keys('Pineappleguy305')
+    time.sleep(1)
+    driver.find_element('xpath', '//*[@id="app"]/div[7]/div/div/div/div[2]/div/div/form/button').click()
+    time.sleep(15)
+
+def scroll_down_script():
+    last_height = driver.execute_script("return document.body.scrollHeight")
+    while True:
+        # Scroll down to the bottom of the screen
+        scroll_down = driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        scroll_down
+        # Wait for the page to load
+        time.sleep(4)
+        new_height = driver.execute_script("return document.body.scrollHeight")
+        if new_height == last_height:
+            print('the end of scrolling')
+            break
+        last_height = new_height
+
+count = 60
+def bumping_action():
+    global count
+    print('Start of bumping')
+    time.sleep(6)
+    bump_button = driver.find_elements('xpath', '//*[contains(@class, "Button_button__3-u4P Button_small__1-Wax Button_secondary__APbMn Buttons_button__2tFT3 Buttons_bump__2UEUF")]')
+    listing_title = driver.find_elements('xpath', '//*[contains(@class, "ListingMetadata_title__2tCv1 ThumbnailAndInfo_listingTitle__2R05g")]')
+    total_post = driver.find_elements('xpath', '//*[contains(@class, "ListingForSaleCard_listingCard__3L_RY")]')
+    print(len(bump_button))
+    print(len(total_post))
+    for i in range(len(bump_button)):
+        print(count)
+        driver.execute_script("arguments[0].scrollIntoView(true)",bump_button[count])
+        print(listing_title[count].text)
+        time.sleep(2)
+        wait = WebDriverWait(driver, 10)
+        wait_bump_button = wait.until(EC.element_to_be_clickable(bump_button[count]))
+        try:
+            wait_bump_button.click()
+            print('Click 1')
+        except:  
+            driver.execute_script("arguments[0].click();", wait_bump_button)
+            print('Click 2')
+        # bump_button[count].click()
+        time.sleep(2)
+        try:
+            price_count = count * 3
+            #post too old must drop
+            old_post = driver.find_element('xpath', '//*[contains(text(), "Unable to bump listings that are too old. Price drop your listing to give it more visibility.")]')
+            price_drop_button = driver.find_elements('xpath', '//*[contains(@class, "Button_button__3-u4P Button_small__1-Wax Button_secondary__APbMn Buttons_button__2tFT3")]')
+            price_drop_button[price_count].click() 
+            print('price drop button has been pressed')
+            if total_post[count].find_element('xpath', '//*[contains(text(), "% Off")]'):
+                print('Price Already been dropped')
+            else:
+                price_drop_10 = driver.find_element('xpath', '//*[contains(@class, "-price-drop-button")]')
+                price_drop_10.click()
+                print('Price has been dropped')
+        except:
+            try:
+                too_new = driver.find_element('xpath', '//*[contains(text(), "You cannot bump this listing yet. Next bump will be available in")]')
+                print('Post is too new')
+            except:
+                successfully_bumped = driver.find_element('xpath', '//*[contains(text(), "Successfully bumped listing.")]')
+                print('Bumped Post')    
+        try: 
+            flash_banner = driver.find_element('xpath', '//*[contains(@class, "FlashBanner_closeButton__1fqAO")]')
+            flash_banner.click()
+            print('Remove flash banner for ' + str(count))
+        except:
+            print('No Banner to click for ' + str(count))
+        print('finish count ' + str(count))
+        count += 1
+        time.sleep(3)
+
+   
+grailed_start_up()
+scroll_down_script()  
+bumping_action()
+
+#way to identify if the post was dropped recently?
+# percent_off = driver.find_element('xpath', '//*[contains(@class, "Text Subhead_subhead__1KLta Price_price__OiaU1 Price_percentOff__1Lz-Y")]')
+# total_likes - driver.find_element('xpath', '//*[contains(@class, "Text SmallTitle_smallTitle__3jj-Q ThumbnailAndInfo_count__1eKc4")]')
+# this code is to show off whether there is a percent off, but need to figure out how to zero in on the specific post to see if this line is located in said post, then that will determine, along with the likes,
+# to see if I would need to lower it again or not
