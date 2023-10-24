@@ -1,0 +1,76 @@
+#tjos extracts info from excel to then create posts with it,
+#would need to adjust this if im going to be using the other layout i have planned
+#would have to iterater and make it so that it gets total amount of pics, then the next column after would be title, then after that price.
+from string import ascii_uppercase
+import pandas as pd 
+import os
+from os import listdir
+from openpyxl import load_workbook
+
+
+excel_description = []
+excel_total_price = []
+excel_total_titles = []
+def extract_info_from_excel(excelpath):
+    #load spreadsheet
+    wb = load_workbook(excelpath)
+
+    #activate worksheet
+    ws = wb.active
+
+    #grab column
+    #will print out as tuple
+    title_column = ws['E']
+    prices = ws['F']
+
+    #for loop
+    #iterates through each cell in the column with titles to extract title, then filters out all the None, then from there
+    for cell in title_column:
+        # print(f'{cell.value}\n')
+        if cell.value != None:
+            excel_total_titles.append(cell.value)
+    for price in prices:
+        if price.value != None:
+            excel_total_price.append(price.value)
+
+#one thing you have to change 
+pic_file = "PicFile1"   #
+#change the folder whree the pics is located
+path = "D:\\Selenium_python2\\" + pic_file + ".xlsx"
+paths = "D:\\Selenium_python2\\Pic_folder\\folder1\\PicFile1.xlsx"
+extract_info_from_excel(paths)
+
+
+image_list = []
+pic_folder = "Pic_folder"
+pic_file = "folder12"
+folder_dirr = "D:\\Selenium_Python2\\" + pic_folder + "\\" + pic_file
+for images in os.listdir(folder_dirr):
+    if (images.endswith(".JPG")):
+        imge = folder_dirr + "\\" + images
+        image_list.append(imge)
+
+# print('excel_total_titles from extract_info_from_excel page')
+# print(excel_total_titles)
+# print(excel_total_price)
+
+
+
+# # Read the data into a pandas dataframe
+# df_read = pd.read_excel(path)
+# df = pd.DataFrame(df_read, columns=['Title', 'Desc'])
+# print(df)
+# # df = pd.read_csv("PicFile1.xlsx")
+
+# # Extract text from a specific column
+# column_name = "Title"
+# text = df_read.loc[0, 'Title']
+
+# # Print the extracted text
+# # print(text)
+
+
+# print(df_read)
+
+#making another column specifically for prices, so that it doesnt have to go in and guess which number is the price, meaning less problems with 
+#correlation btwn prices and pants sizes.
