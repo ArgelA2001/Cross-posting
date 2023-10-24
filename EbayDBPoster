@@ -1,0 +1,1368 @@
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import Select
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.common.by import By
+from selenium.webdriver import ActionChains
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.action_chains import ActionChains
+
+import time
+import sqlite3
+import os
+from pyautogui import *
+import pyautogui
+import logging
+from PIL import Image
+from collections import Counter
+import webcolors
+import traceback
+import re
+from colorama import Fore, Style
+import keyboard
+from selenium.common.exceptions import TimeoutException
+
+#this import above gives me access to info from text_parser
+#muse use and identify where imports are neede
+
+chrome_options = Options()
+chrome_options.add_experimental_option("detach", True)
+
+driver = webdriver.Chrome("D:\\Selenium_python2\\chromedriver.exe", chrome_options=chrome_options)
+driver.get("https://signin.ebay.com/ws/eBayISAPI.dll?SignIn&ru=https%3A%2F%2Fwww.ebay.com%2F")
+action = ActionChains(driver)
+connection = sqlite3.connect('D:\\Selenium_python2\\Depop_database.db')
+cursor = connection.cursor()
+# driver.maximize_window()
+time.sleep(2)
+total_brand_list = {
+    'Adidas': ['adidas', 'adida'],
+    'Mitchell & Ness': ['mitchell', 'ness'],
+    'Nike': ['nike', 'nik', 'acg', 'nike '],
+    'J. Galt': ['j. galt'],
+    'Fox Racing': ['fox', 'foxracing'],
+    'NASCAR': ['intimidator', 'nascar', 'busch', 'matt', 'nascar', 'tony', 'dale', 'jimmy', 'johnson', 'jimmie', 'fireball roberts', 'carl long', 'fred lorenzen', 'david reutimann', 'richard childress', 'ned jarrett', 'kyle petty', 'ricky rudd', 'adam petty', 'joe weatherly', 'donnie allison', 'dave marcis', 'tim richmond', 'bobby labonte', 'ricky craven', 'kyle busch', 'geoff bodine', 'bobby allison', 'joey logano', 'junior johnson', 'todd bodine', 'kenny wallace', 'carl edwards', 'denny hamlin', 'jamie mcmurray', 'benny parsons', 'kevin harvick', 'lee petty', 'jeff burton', 'david pearson', 'kurt busch', 'kenseth', 'terry labonte', 'michael waltrip', 'kasey kahne', 'earnhardt', 'cale yarborough', 'alan kulwicki', 'tony stewart', 'jimmie johnson', 'rusty wallace', 'darrell waltrip', 'davey allison', 'dale jarrett', 'mark martin', 'jeff gordon', 'bill elliott', 'dale earnhardt', 'richard petty'],
+    
+    'Harley Davidson': ['harley', 'davidson'],
+    'Anti Social Social Club': ['anti', 'social', 'social club', 'social clubs'],
+    'Arc\'tyrex': ['arc', 'tyrex', 'arctyrex', "arc'tyrex"],
+    'Armani': ['exchange', 'armmani'],
+    'Asics': ['asics', 'asic'],
+    'BONGO': ['bongo', 'bongos'],
+
+    'Balenciaga': ['bal', 'enciaga', 'balenciaga', 'balenci'],
+    
+    'Birkenstock': ['birks', 'birk', 'birkenstock'],
+    'Calvin Klein': ['calvin', 'klein', 'calvin klein'],
+    'Cambridge Classics': ['cambridge', 'classics'],
+    'Buckle': ['buckle', 'bke'],
+    'Chalk Line': ['chalk'],
+    'Champion': ['champion'],
+    'Cherokee': ['cherokee'],
+    'Citizens of Humanity': ['citizens', 'humanity', 'humanities', 'humanity'],
+    'Coca-Cola': ['coca', 'cola', 'coca-cola'],
+    'Cole Haan': ['cole', 'haan', 'colehaan'],
+    'Columbia': ['columbia', 'columbi'],
+    'Coogi': ['coogi'],
+    'DC Comics': ['dc'],
+    'Dickies': ['dickies'],
+    'Disney': ['goofy', 'mickey', 'duck', 'disney', 'star', 'boba fett'],
+    'Dr. Martens': ['martens', 'marten'],
+    'Ecko Unltd.': ['ecko', 'unlimited', 'unltd.', 'unltd'],
+    'Ed Hardy': ['hardy'],
+    'Fear of God': ['fear', 'god', 'fear of god', 'fog'],
+    'Forever 21': ['forever'],
+    'G-III': ['g', 'iii', 'g-iii'],
+    'GANT': 'gant',
+    'Goodfellow & CO': ['goodfellow'],
+    'Guess': ['guess'],
+    'Hard Rock Cafe': ['hard', 'cafe', 'rock cafe'],
+    'JNCO': ['jnco'],
+    'Jerzees': ['jerzees'],
+    'Jordan': ['jordan', 'jordans', 'jorda'],
+    'Kappa': 'kappa',
+    'LRG': ['lrg'],
+    'Land\'s End': ["land's", 'lands'],
+    'Levi': ['levi', 'levis', 'levi\'s'],
+    'Liquid Blue': ['liquid'],
+    'Looney Tunes': ['acme', 'tweety', 'looney tunes', 'taz', 'sylvester', 'jam'],
+    'Lucky Brand': ['lucky'],
+    'L.L. Bean': ['ll', 'bean'],
+    'Lululemon': ['lululemon', 'lulu'],
+    'Marvel': ['marvel', 'spiderman', 'spider-man', 'captain america', 'thor', 'iron man', 'iron-man', 'deadpool', 'marvel'],
+    'Miss Me': ['miss me'],
+    'Murano': 'murano',
+    'Nautica': ['nautica'],
+    'New Balance': ['balance'],
+    'New Era': ['new era', 'era', 'newera'],
+    'Nordstrom': ['nordstrom'],
+    'Obermeyer': 'obermeyer',
+    'Old Navy': ['oldnavy', 'old'],
+    'Oskar Haug': ['haug'],
+    'Patagonia': ['pata', 'patagonia'],
+    'Planet Hollywood': ['planet', 'hollywood'],
+    'Polo Ralph Lauren': ['polo'],
+    'Primitive': 'primitive',
+    'Pro Player': ['pro player'],
+    'Quiksilver': ['quicksilver', 'quiksilver'],
+    'RSQ': ['rsq'],
+    'Ralph Lauren': ['ralph', 'lauren'],
+    'Reebok': ['reebok', 'reeboks'],
+    'Rocawear': ['rocawear', 'roca'],
+    'Rock Revival': ['rock revival', 'revival'],
+    'RVCA': 'rvca',
+    'Russell Athletics': ['russell', 'russel'],
+    'Salty Crew': ['salty', 'crew'],
+    'Star Wars': ['star', 'wars', 'boba', 'yoda', 'mandalorian'],
+    'Starter': ['starter', 'starters'],
+    'Stussy': 'stussy',
+    'Supreme': ['supreme'],
+    'The Mountain': ['mountain', 'the mountain'],
+    'The North Face': ['north', 'northface'],
+    'Timberland': ['timberland', 'timbs', 'timb'],
+    'Tommy Bahama': 'bahama',
+    'Tommy Hilfigher': ['tommy', 'hilfiger', 'hilfigher'],
+    'True Religion': ['true', 'religion'],
+    'UGG': 'ugg',
+    'Under Armour': ['under', 'armour'],
+    'Vans': 'vans',
+    'Vineyard Vines': ['vineyard', 'vines', 'vineyards'],
+    'Von Dutch': ['von', 'dutch', 'vondutch'],
+    'WWE': ['stone cold', 'wwe'],
+    'Logo Athletic': ['logo', 'athletic'],
+    'Zara': 'zara',
+    'Baby Phat': 'baby',
+    'American Eagle Outfitters': ['american', 'eagle'],
+    'Carhartt': 'carhartt',
+    'extras': ['dockers', 'eastland', 'dickies', 'apple', 'aeropostale', 'gymshark', 'guess', 'gymboree', 'ghirardelli', 
+                'bebe', 'camel', 'crocs', 'clarks' 'coach', 'dior', 'footjoy', 'ferrari', 'funko', 'fendi',
+                'gillette', 'gap', 'keen', 'kith', 'quicksilver', 'minecraft', 'nutmeg', 'obey', 'samsung', 'cabela', 'majestic', 'wrangler', 'woolrich', 'ariat',
+                'pendleton', 'converse', 'fila', 'kangol', 'lacoste', 'playboy', 'polaroid', 'chaps', 'billabong', 'lacoste', 'thrasher', 'bape'],
+    'Unbranded': ['vintage', 'vnt', 'vtg', '90\'s'],
+    'NBA': ['unk', 'nba', 'kobe', 'lebron', 'kd', '76ers', 'hawks', 'bucks', 'bulls', 'cavaliers', 'celtics', 'clippers', 'grizzlies', 'heat', 'hornets', 'jazz', 'kings', 'knicks', 'lakers', 'magic', 'mavericks', 'nets', 'nuggets', 'pacers', 'pelicans', 'pistons', 'raptors', 'rockets', 'spurs', 'suns', 'thunder', 'timberwolves', 'trailblazers', 'warriors', 'wizards'],
+    'NFL': ['football', 'nfl', 'raider', 'raiders', 'packers', 'lions', 'saints', 'cardinals', 'chargers', 'bucs', 'buccanears', 'browns', 'cowboys', '49er', 'ravens', 'broncos', 'seahawk', 'seahawks', 'panthers', 'jets', 'colts', 'falcons', 'jaguars', 'jags', 'chiefs', 'bills', 'eagles', 'rams', 'titans', 'bengals', 'steelers', 'dolphins', 'patriots', 'vikings', 'commanders', 'redskins'],
+    'NHL': ['nhl'],
+    'MLB': ['mlb', 'angels', 'astros', 'athletics', 'jays', 'braves', 'brewers', 'cardinals', 'cubs', 'yankees', 'diamondbacks', 'dodgers', 'giants', 'guardians', 'mariners', 'marlins', 'mets', 'nationals', 'orioles', 'padres', 'phillies', 'pirates', 'rangers', 'rays', 'sox', 'reds', 'rockies', 'royals', 'tigers', 'twins', 'sox', 'yankees'],
+   
+    }
+general_colors = {
+    "red": (255, 0, 0),
+    "green": (0, 128, 0),
+    "blue": (0, 0, 255),
+    "yellow": (255, 255, 0),
+    "purple": (128, 0, 128),
+    "orange": (255, 165, 0),
+    "pink": (255, 192, 203),
+    "brown": (139, 69, 19),
+    "blue": (0, 0,128), #techincally navy blue
+    "black": (0, 0, 0),
+    "white": (255, 255, 255),
+    "gray": (128, 128, 128),# yes 2 different gray, one is classified as silver
+    "gray": (192, 192, 192),
+    "gold": (255, 215, 0),
+    "beige": (245, 245, 220)
+}
+nhl_teams = {
+    'Ducks': 'Anaheim Ducks',
+    'Coyotes': 'Arizona Coyotes',
+    'Bruins': 'Boston Bruins',
+    'Sabres': 'Buffalo Sabres',
+    'Flames': 'Calgary Flames',
+    'Hurricanes': 'Carolina Hurricanes',
+    'Blackhawks': 'Chicago Blackhawks',
+    'Avalanche': 'Colorado Avalanche',
+    'Blue Jackets': 'Columbus Blue Jackets',
+    'Stars': 'Dallas Stars',
+    'Red Wings': 'Detroit Red Wings',
+    'Oilers': 'Edmonton Oilers',
+    'Panthers': 'Florida Panthers',
+    'Kings': 'Los Angeles Kings',
+    'Wild': 'Minnesota Wild',
+    'Canadiens': 'Montreal Canadiens',
+    'Predators': 'Nashville Predators',
+    'Devils': 'New Jersey Devils',
+    'Islanders': 'New York Islanders',
+    'Rangers': 'New York Rangers',
+    'Senators': 'Ottawa Senators',
+    'Flyers': 'Philadelphia Flyers',
+    'Penguins': 'Pittsburgh Penguins',
+    'Sharks': 'San Jose Sharks',
+    'Blues': 'St. Louis Blues',
+    'Lightning': 'Tampa Bay Lightning',
+    'Maple Leafs': 'Toronto Maple Leafs',
+    'Canucks': 'Vancouver Canucks',
+    'Golden Knights': 'Vegas Golden Knights',
+    'Capitals': 'Washington Capitals',
+    'Jets': 'Winnipeg Jets',
+    # Add more NHL team names and values as needed
+}
+nfl_teams = {
+    'Cardinals': 'Arizona Cardinals',
+    'Falcons': 'Atlanta Falcons',
+    'Ravens': 'Baltimore Ravens',
+    'Bills': 'Buffalo Bills',
+    'Panthers': 'Carolina Panthers',
+    'Bears': 'Chicago Bears',
+    'Bengals': 'Cincinnati Bengals',
+    'Browns': 'Cleveland Browns',
+    'Cowboys': 'Dallas Cowboys',
+    'Broncos': 'Denver Broncos',
+    'Lions': 'Detroit Lions',
+    'Packers': 'Green Bay Packers',
+    'Texans': 'Houston Texans',
+    'Oilers': 'Houston Oilers',
+    'Colts': 'Indianapolis Colts',
+    'Jaguars': 'Jacksonville Jaguars',
+    'Chiefs': 'Kansas City Chiefs',
+    'Chargers': 'Los Angeles Chargers',
+    'Rams': 'Los Angeles Rams',
+    'Dolphins': 'Miami Dolphins',
+    'Vikings': 'Minnesota Vikings',
+    'Patriots': 'New England Patriots',
+    'Saints': 'New Orleans Saints',
+    'Giants': 'New York Giants',
+    'Jets': 'New York Jets',
+    'Raiders': 'Las Vegas Raiders',
+    'Eagles': 'Philadelphia Eagles',
+    'Steelers': 'Pittsburgh Steelers',
+    '49ers': 'San Francisco 49ers',
+    'Seahawks': 'Seattle Seahawks',
+    'Buccaneers': 'Tampa Bay Buccaneers',
+    'Titans': 'Tennessee Titans',
+    'Redskins': 'Washington Commanders',
+    'Commanders': 'Washington Commanders'
+}
+nba_teams = {
+    'Hawks': 'Atlanta Hawks',
+    'Celtics': 'Boston Celtics',
+    'Nets': 'Brooklyn Nets',
+    'Hornets': 'Charlotte Hornets',
+    'Bulls': 'Chicago Bulls',
+    'Cavaliers': 'Cleveland Cavaliers',
+    'Mavericks': 'Dallas Mavericks',
+    'Nuggets': 'Denver Nuggets',
+    'Pistons': 'Detroit Pistons',
+    'Warriors': 'Golden State Warriors',
+    'Rockets': 'Houston Rockets',
+    'Pacers': 'Indiana Pacers',
+    'Clippers': 'LA Clippers',
+    'Lakers': 'Los Angeles Lakers',
+    'Grizzlies': 'Memphis Grizzlies',
+    'Heat': 'Miami Heat',
+    'Bucks': 'Milwaukee Bucks',
+    'Timberwolves': 'Minnesota Timberwolves',
+    'Pelicans': 'New Orleans Pelicans',
+    'Knicks': 'New York Knicks',
+    'Thunder': 'Oklahoma City Thunder',
+    'Magic': 'Orlando Magic',
+    '76ers': 'Philadelphia 76ers',
+    'Suns': 'Phoenix Suns',
+    'Trail Blazers': 'Portland Trail Blazers',
+    'Kings': 'Sacramento Kings',
+    'Spurs': 'San Antonio Spurs',
+    'Raptors': 'Toronto Raptors',
+    'Jazz': 'Utah Jazz',
+    'Wizards': 'Washington Wizards',
+}
+mlb_teams = {
+    'Diamondbacks': 'Arizona Diamondbacks',
+    'Braves': 'Atlanta Braves',
+    'Orioles': 'Baltimore Orioles',
+    'Red Sox': 'Boston Red Sox',
+    'Cubs': 'Chicago Cubs',
+    'White Sox': 'Chicago White Sox',
+    'Reds': 'Cincinnati Reds',
+    'Indians': 'Cleveland Guardians',  
+    'Rockies': 'Colorado Rockies',
+    'Tigers': 'Detroit Tigers',
+    'Astros': 'Houston Astros',
+    'Royals': 'Kansas City Royals',
+    'Angels': 'Los Angeles Angels',
+    'Dodgers': 'Los Angeles Dodgers',
+    'Marlins': 'Miami Marlins',
+    'Brewers': 'Milwaukee Brewers',
+    'Twins': 'Minnesota Twins',
+    'Mets': 'New York Mets',
+    'Yankees': 'New York Yankees',
+    'Athletics': 'Oakland Athletics',
+    'Phillies': 'Philadelphia Phillies',
+    'Pirates': 'Pittsburgh Pirates',
+    'Padres': 'San Diego Padres',
+    'Giants': 'San Francisco Giants',
+    'Mariners': 'Seattle Mariners',
+    'Cardinals': 'St. Louis Cardinals',
+    'Rays': 'Tampa Bay Rays',
+    'Rangers': 'Texas Rangers',
+    'Blue Jays': 'Toronto Blue Jays',
+    'Nationals': 'Washington Nationals',
+}
+waist_size_to_letter = {
+    'XS': ['27', '28'],
+    'S': ['29, 30', '31'],
+    'M': ['32', '33', '34'],
+    'L': ['35', '36', '37', '38'],
+    'XL': ['39', '40', '41', '42'],
+    'XXL': ['43', '44', '45', '46'],
+    'XXXL': ['47', '48', '49']
+}
+clothing_bottom = ['jeans', 'joggers', 'leggings', 'shorts', 'sweatpants', 'pants', 'activewear pants']
+clothing_tops = ['cardigans', 'hoodies', 'jumpers', 'sweatshirts', 't-shirts']
+clothing_accessories = ['hats', 'cap', 'shoes', 'bags']
+
+nascar_list = ['intimidator', 'nascar','fireball roberts', 'dale jarrett', 'mark martin', 'jeff gordon', 'bill elliott', 'dale earnhardt', 
+               'carl long', 'fred lorenzen', 'david reutimann', 'richard childress', 'ned jarrett', 'kyle petty', 'ricky rudd', 'adam petty', 
+               'joe weatherly', 'donnie allison', 'dave marcis', 'tim richmond', 'bobby labonte', 'ricky craven', 'kyle busch', 'geoff bodine', 
+               'bobby allison', 'joey logano', 'junior johnson', 'todd bodine', 'kenny wallace', 'carl edwards', 'denny hamlin', 'jamie mcmurray', 
+               'benny parsons', 'kevin harvick', 'lee petty', 'jeff burton', 'david pearson', 'kurt busch', 'kenseth', 'terry labonte', 
+               'michael waltrip', 'kasey kahne', 'earnhardt', 'cale yarborough', 'alan kulwicki', 'tony stewart', 'jimmie johnson', 'rusty wallace', 
+               'darrell waltrip', 'davey allison', 'richard petty']
+
+sports_list = ['NHL', 'NFL', 'NBA', 'MLB', 'Soccer']
+decade_list = ['90', '80', '70', '60', '50'] 
+excluded_terms = ['kid', 'youth', 'vintage']
+tags_to_signify_new = ['new', 'nwt']
+
+def hex_to_rgb(hex_color):
+    """
+    just returns the hex to rgb value, but is used in congruence with the color_difference, closest_general_color and color_identifier function
+    """
+    # print(f'hex to rgb {webcolors.hex_to_rgb(hex_color)}')
+    return webcolors.hex_to_rgb(hex_color)
+
+def color_difference(color1, color2):
+    """
+    # Calculate the Euclidean distance between two RGB colors
+    """
+    r1, g1, b1 = color1
+    r2, g2, b2 = color2
+    return ((r1 - r2) ** 2 + (g1 - g2) ** 2 + (b1 - b2) ** 2) ** 0.5
+
+def closest_general_color(target_rgb):
+    """
+    this uses the general colors dictionary above to find the closest color match, then returns it so we can 
+    enter that information
+    """
+    # target_rgb = hex_to_rgb(hex_color)
+    closest_color = None
+    min_difference = float('inf')
+
+    for color_name, color_rgb in general_colors.items():
+        difference = color_difference(target_rgb, color_rgb)
+        if difference < min_difference:
+            min_difference = difference
+            closest_color = color_name
+
+    return closest_color
+
+def color_identifier():
+    """
+    This identifies the color of the first pic that we saved from extracting pics
+    and uses the hex color dictionary that we created above
+    """
+    image_path = extracting_pics(id_num)
+    image = Image.open(image_path)
+    image = image.convert("RGB")
+
+    # Resize the image to a small size if needed
+    width, height = image.size
+    resize_factor = 0.1
+    image = image.resize((int(width * resize_factor), int(height * resize_factor)))
+
+    # Get the pixels as a list of RGB tuples
+    pixels = list(image.getdata())
+
+    exclude_range = [(40, 180), (40, 185)]  # (Green, Blue) range
+
+    # Filter out the excluded colors
+    filtered_pixels = [(r, g, b) for (r, g, b) in pixels if not (
+        (g >= exclude_range[0][0] and g <= exclude_range[0][1]) and
+        (b >= exclude_range[1][0] and b <= exclude_range[1][1]) and
+        r == 0
+    )]
+
+    # Count the occurrence of each color in the filtered image
+    color_counts = Counter(filtered_pixels)
+
+    # Find the most common color in the filtered image
+    most_common_color = color_counts.most_common(1)[0][0]
+
+    closest_color = closest_general_color(most_common_color)
+    return closest_color
+
+def start_up(account_name):
+    """
+    this checks for which account im signing into, will need to add parameters for that
+    then just logs in like normal
+    """
+    if account_name == 'rv':
+        acc_name = 'TheRealVintage'
+        acc_pw = 'Pineappleguy305'
+    elif account_name == 'other':
+        acc_name = 'ararr_92'
+        acc_pw = 'Fernanda*1979'
+ #sometimes it does captcha then sign in, sometimes sign in then captcha
+
+    WebDriverWait(driver, 40).until(EC.presence_of_element_located(('css selector', '[id="userid"]')))
+    username_entry = driver.find_elements('css selector', '[id="userid"]')
+    username_entry[0].send_keys(acc_name) 
+    time.sleep(2)
+    username_continue_button = driver.find_element('css selector', '[id="signin-continue-btn"]')
+    username_continue_button.click()
+    
+    WebDriverWait(driver, 80).until(EC.element_to_be_clickable(('xpath', '//*[@id="pass"]')))
+    time.sleep(1)
+    password_entry = driver.find_element('css selector', '[id="pass"]')
+    password_entry.send_keys(acc_pw)
+    time.sleep(1)
+    sign_in_button = driver.find_element('css selector', '[id="sgnBt"]')
+    sign_in_button.click()
+    time.sleep(3)
+    driver.execute_script("window.open('{}');".format('https://www.ebay.com/mys/overview'))
+    driver.switch_to.window(driver.window_handles[-1])
+    time.sleep(3)
+
+def extracting_pics(the_id_num):
+    """
+    this extracts th3e pics from my file
+    then checks for the id number shown in beginning of filepath
+    then returns the first image to scan the color of it
+    then creates an image list that we will use
+    """
+    global image_list
+    image_i = str(the_id_num) + '_'
+    print(image_i)
+    image_list = []
+    folder_dirr = 'D:\Selenium_python2\Pic_folder\BackgroundPics'
+    for images in os.listdir(folder_dirr):
+        if (images.startswith(image_i)):
+            imge = folder_dirr + "\\" + images
+            image_list.append(imge)  
+    return image_list[0]
+
+def adding_pics(the_id_num):
+    """
+    this takes the results from extracting_pics and just adds these images to the current post
+    """
+    extracting_pics(the_id_num)
+    WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[@id="fehelix-uploader"]')))
+    pic_time = 3
+    pstart = 0       
+    for i in range(len(image_list)):
+        driver.find_element('xpath', '//*[@id="fehelix-uploader"]').send_keys(str(image_list[pstart]))
+        pstart += 1
+        time.sleep(pic_time)
+    time.sleep(1)
+    pic_time = 8
+    WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[@id="fehelix-uploader"]')))
+
+def picking_condition(cond, title_of_item):
+    """
+    just chooses condition based on the option given within the database, 
+    MAYBE SHOULD MAKE AN OPTION TO IDENTIFY ANY DISCREPENCIES
+    -- if title states new, but not listed as new condition in db
+    """
+    # conditions will not be needed for vintage items
+    try:
+        WebDriverWait(driver, 7).until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "continue-btn")]')))
+        conditions = driver.find_elements('xpath', '//*[contains(@class, "radio__control")]')
+        if len(conditions) == 4:
+            used_cond_int = 3
+        else:
+            used_cond_int = 1
+        time.sleep(1)
+
+        if any(new_word in title_of_item.lower() for new_word in tags_to_signify_new) or 'new' in cond:
+            conditions[0].click()
+        else:
+            conditions[used_cond_int].click()
+        conditions_continue = driver.find_element('xpath', '//*[contains(@class, "continue-btn")]')
+        conditions_continue.click()
+    except TimeoutException:
+        pass
+    WebDriverWait(driver, 20).until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "uploader-thumbnails__photo-icon-bg")]')))
+
+def inserting_correct_category(our_og_category, edit_or_no, category_text, the_gender):
+    """
+    inserts correct category and uses a argument to identify if edit button needs to be clicked or not
+    """
+    #initiates change to the category by clicking on the category
+    if edit_or_no == 'yes':
+        category_edit_button = driver.find_element('xpath', '//*[contains(@aria-label, "Selected category")]')
+        category_edit_button.click()
+
+    time.sleep(2)
+    
+    continue_with_script = category_checker(category_text, our_og_category, the_gender)
+    if continue_with_script is False:
+        continue_with_selecting_current_cat = False
+        click_done_categotry_dropdown = driver.find_element('xpath', '//*[contains(@class, "btn btn--secondary")]')
+        driver.execute_script('arguments[0].click();', click_done_categotry_dropdown)
+    else:
+        #enter the category we have given, the backspace is the refresh the page, since sometimes doesnt refresh if we just enter it in super quick
+        category_enter_value = driver.find_element('xpath', '//*[contains(@aria-label, "Enter a category value")]')
+        category_enter_value.send_keys(our_og_category)
+        category_enter_value.send_keys(Keys.BACKSPACE)
+        category_enter_value.send_keys(our_og_category[-1])
+        time.sleep(2)
+
+        #then with this we now choose the options and get the text results
+        WebDriverWait(driver, 20).until(EC.element_to_be_clickable(('xpath', '//*[contains(@class, "field se-radio-group__option")]')))
+        continue_with_selecting_current_cat = True
+    return continue_with_selecting_current_cat
+
+def category_checker(current_given_category, what_we_found, the_gender):
+    """
+    this just checks if the given category that is provided is already the correct one, and skips it so that we dont do any unnecessary work and 
+    overcomplicate this program
+    """
+    print(f' what we found {what_we_found}')
+    print(f' current_given_category: {current_given_category}')
+    if what_we_found == 'jersey' or what_we_found == 'nascar':
+        category_qualification = what_we_found in current_given_category
+    else:
+        category_qualification = what_we_found in current_given_category and re.search(rf'\b{the_gender}\b', current_given_category) is not None
+    if category_qualification:
+        should_we_continue = False
+    else:
+        should_we_continue = True
+    print(f' should we continue {should_we_continue}')
+    return should_we_continue
+
+def inserting_and_selecting_jersey_category(current_title, yes_or_no, category_text, the_gender):
+    """
+    if jersey is found in the title, clicks jersey item
+    then identifies the team that its on using the team dictionaries above
+    """
+    for sport in sports_list:
+        if sport.lower() in current_title:
+            sports_category = f'jersey {sport}'
+            break
+
+    continue_with_script = category_checker(category_text, sport.lower(), the_gender)
+    if continue_with_script is False:
+        pass
+    else:
+        inserting_correct_category(sports_category, yes_or_no, category_text, the_gender)
+        #this portion is jerseys own spin of select_correct_category
+        category_options = driver.find_elements('xpath', '//*[contains(@class, "field__label")]')
+        driver.execute_script("arguments[0].click();", category_options[0])
+
+def inserting_and_selecting_vintage_category(gen, cat, yes_or_no, category_text):
+    """
+    if it is a vintage item, then it clicks on vintage category
+    """
+    if cat == 'sweatshirts':
+        cat = 'Sweater'
+    vintage_category = f'{gen} vintage {cat}'
+        
+    continue_with_script = category_checker(category_text, 'vintage', gen)
+    if continue_with_script is False:
+        pass
+    else:
+        inserting_correct_category(vintage_category, yes_or_no, category_text, gen)
+        WebDriverWait(driver, 20).until(EC.element_to_be_clickable(('xpath', '//*[contains(@class, "field__label")]')))
+        category_options = driver.find_elements('xpath', '//*[contains(@class, "field__label")]')
+        for opt in category_options:
+            opt_text = opt.text.lower()
+            if (cat.lower() in opt_text
+                and gen.lower() in opt_text
+                and 'vintage' in opt_text
+                and 'youth' not in opt_text
+                and 'kid' not in opt_text):
+                driver.execute_script("arguments[0].click();", opt)
+                time.sleep(3)
+                break
+
+def inserting_and_selecting_nascar_category(yes_or_no, category_text, the_gender):
+    """
+    if nascar is selected, then chooses nascar and tries to identify the nascar driver
+    #todo BUT THAT WILL NEED SOME WORK
+    """
+    nascar_category = 'nascar clothing'
+    continue_with_script = category_checker(category_text, 'nascar', the_gender)
+    if continue_with_script is False:
+        pass
+    else:
+        inserting_correct_category(nascar_category, yes_or_no, category_text, the_gender)
+        WebDriverWait(driver, 20).until(EC.element_to_be_clickable(('xpath', '//*[contains(@class, "field__label")]')))
+        category_options = driver.find_elements('xpath', '//*[contains(@class, "field__label")]')
+        driver.execute_script("arguments[0].click();", category_options[0])
+
+def selecting_correct_category(cat, gen):
+    """
+    takes the correct category from information above, and clicks the correct based on gender and other filters
+    """
+    category_options = driver.find_elements('xpath', '//*[contains(@class, "field__label")]')
+
+    #similar to the category options above in vintage, but without the vintage filter
+    for opt in category_options:
+        opt_text = opt.text.lower()
+        if (
+            cat.lower() in opt_text
+            and all(term not in opt_text for term in excluded_terms)
+            and re.search(rf'\b{gen}\b', opt_text) is not None
+        ):
+            driver.execute_script("arguments[0].click();", opt)
+            print('options has been clicked options has been clicked options has been clicked')
+            time.sleep(3)
+            break
+
+def clicking_suggested_category():
+    """
+    simply clicks on first suggested category,
+    this is only used if all other failes
+    """
+    category_edit_button = driver.find_element('xpath', '//*[contains(@aria-label, "Selected category")]')
+    category_edit_button.click()
+    WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "se-field-card__content-value")]')))
+    click_on_suggested_category = driver.find_element('xpath', '//*[contains(@class, "se-field-card__content-value")]')
+    driver.execute_script("arguments[0].click();", click_on_suggested_category)
+
+def identifying_gender(the_title):
+    """
+    identifies if women is listed in title to make the post item women
+    if not, then men is chosen by default
+    """
+    women_list = ['wmn', 'women']
+    found_women = any(wom in the_title for wom in women_list)
+    if found_women:
+        the_gender = 'women'
+    else:
+        the_gender = 'men'
+    return the_gender
+
+def adjusting_category(the_category, the_gender, the_title):
+    """
+    this adjust the category if needs adjusting, it checks the tite for any sign of the word women
+    or wmn, then with that adjust the category as needed
+    """
+    the_title = the_title.lower().split(' ')
+    the_gender = identifying_gender(the_title)
+
+    list_of_categories = ['jacket', 'sweater']
+    #multiple categories that we will change ahead of time to better fit the ebay category system
+    #! create more filters for this as we go on, check all the possible categories i will be using and make sure they work
+    if any(cat_list in the_title for cat_list in list_of_categories):
+        the_category = next(cat.title() for cat in list_of_categories if cat in the_title)
+    elif the_category == 'joggers' or the_category == 'sweatpants':
+        the_category = 'Activewear Pants'
+    elif the_category == 'sneakers' or the_category == 'trainers':
+        the_category = 'Athletic Shoes' 
+    elif the_category == 'flip flops & slides':
+        the_category = 'Sandals'
+    elif the_category == 'jumpers':
+        the_category = 'Hoodie'
+    elif the_category == 'cardigan':
+        the_category = 'Sweaters'
+    elif the_category == 'bags & purses':
+        the_category = 'Bags'
+    elif the_category == 'Other':
+        the_category = ' '
+    elif any('overall' in word for word in the_title):
+        the_category = 'Jeans'
+
+    # need ot create a big list of other categoires , cant just put everything else as  " "
+    try:
+        #this is if the category pop up menu is alredy up and we still have to change it
+        #without clicking on itthen this means we must choose a category
+        WebDriverWait(driver, 5).until(EC.presence_of_element_located(('xpath', '//*[contains(@aria-label, "Enter a category value")]')))
+        nascar_item = [word for word in nascar_list if word in the_title]
+        if nascar_item:
+            inserting_and_selecting_nascar_category('no', 'noCategoryText')
+        elif ('vintage' in the_title or any(decade in the_title for decade in decade_list)) and the_category != 'Bags': #TODO create a code to make vtg also signal to move on
+            inserting_and_selecting_vintage_category(the_gender, the_category, 'no', 'noCategoryText')
+        elif 'jersey' in the_title:
+            inserting_and_selecting_jersey_category(the_title, 'no', 'noCategoryText')   #TODO fix current category text
+        else:
+            if the_category == ' ':
+                print(' suggested suggested suggested suggested suggested suggested suggested suggested suggested suggested suggested')
+                clicking_suggested_category() #TODO need to figure something out if there is no suggest category, some way to look within the text
+                #TODO to find the category within it
+            else:
+                select_yes_or_no = inserting_correct_category(the_category, 'no', 'noCategoryText', the_gender) #!this should = False
+                print(f' the category {the_category}')
+                print(f' select yes or no {select_yes_or_no}')
+                if select_yes_or_no:
+                    print("**********************************************************")
+                    try:
+                        selecting_correct_category(the_category, the_gender)
+                    except Exception as e:
+                        # print(e)
+                        # traceback.print_exc()
+                        clicking_suggested_category()
+                    
+
+    except TimeoutException:
+        #category is already chosen and we must make sure that the category is the right category
+        #which is most likely already true since ebay recommended system very good, but we can still adjust if needed
+        category_edit_button = driver.find_element('xpath', '//*[contains(@aria-label, "Selected category")]')
+        current_category_text = category_edit_button.text.lower()
+        if (the_category.lower() in current_category_text) and re.search(rf'\b{the_gender}\b', current_category_text) is not None:
+            print('category selected is already the correct one, move onto the next')
+            pass
+        else:
+            print('need to change category 2 need to change category 2 need to change category 2need to change category 2')
+            nascar_item = [word for word in nascar_list if word in the_title]
+            if nascar_item:
+                inserting_and_selecting_nascar_category('yes', current_category_text)
+            elif 'jersey' in the_title:
+                inserting_and_selecting_jersey_category(the_title, 'yes', current_category_text, the_gender)
+            elif ('vintage' in the_title or any(decade in the_title for decade in decade_list)) and the_category != 'Bags':
+                inserting_and_selecting_vintage_category(the_gender, the_category, 'yes', current_category_text)
+            else:  #, then we assume that it is just a normal piece of clothing, and from there, then we are able to just proceed within men's clothing
+                if the_category.lower() in clothing_bottom:
+                    category_value = clothing_bottom
+                elif the_category.lower() in clothing_tops:
+                    category_value = clothing_tops
+                elif the_category.lower() in clothing_accessories:
+                    category_value = clothing_accessories
+                else:
+                    category_value = clothing_tops
+
+                if (
+                    any(category_val.lower() in current_category_text for category_val in category_value)
+                    and all(term not in current_category_text for term in excluded_terms) #!makes sure none of the excluded terms are in the category
+                    and re.search(rf'\b{the_gender}\b', current_category_text) is not None #!makes sure the genders are correct
+                ): #! if the info is already all correct, then it just moves on to the next part of the overall script
+                    pass
+                
+                else: #! the it changes the category to the correct one
+                    print('###############################################')
+                    time.sleep(2)
+                    WebDriverWait(driver, 20).until(EC.presence_of_element_located(('xpath', '//*[contains(@aria-label, "Selected category")]')))
+                    if the_category == " ":
+                        pass
+                    else:
+                        print('need to change category 2 need to change category 2 need to change category 2need to change category 2')
+                        select_yes_or_no = inserting_correct_category(the_category, 'yes', current_category_text, the_gender)
+                        print(f' select yes or no {select_yes_or_no}')
+                        if select_yes_or_no:
+                            selecting_correct_category(the_category, the_gender)
+
+def continue_wo_match():
+    """
+    this just pressed the continue wo match button, made this into a function cause is being used multiple times
+    """     
+    WebDriverWait(driver, 20).until(EC.element_to_be_clickable(('xpath', '//*[contains(@class, "textual-display btn btn--secondary prelist-radix__next-action")]')))
+    continue_w_no__match = driver.find_element('xpath', '//*[contains(@class, "textual-display btn btn--secondary prelist-radix__next-action")]')
+    continue_w_no__match.click()
+    time.sleep(2)
+
+def frequently_selected_options(options):
+    """
+    also use this function frequently
+    just chooses frequently selected options with choice of choosing multiple, or just choosing once
+    """
+    #instead of me creating the code and using the text to try to identify the category that is currently unkown, just uses the recommended feature from ebay
+    WebDriverWait(driver, 2).until(EC.presence_of_element_located(('xpath', '//*[contains(@name, "frequentlySelectedOptions")]')))
+    freq_selected_options = driver.find_elements('xpath', '//*[contains(@name, "frequentlySelectedOptions")]')
+    if options == 'all':
+        for options in freq_selected_options:
+            driver.execute_script('arguments[0].click();', options)
+            time.sleep(.1)
+    elif options == 'one':
+        driver.execute_script('arguments[0].click();', freq_selected_options[0])
+
+    #this clicks off the dropdown to continue to the next search 
+    driver.find_element('xpath', '//*[contains(@class, "aspects-category-radix__title")]').click()
+    time.sleep(3)
+
+def find_team_value(search_title, team_dict):
+    """
+    this is used to find the team if it is considered a jersey item
+    """
+    for keyword, value in team_dict.items():
+        if keyword.lower() in search_title:
+            return value
+
+def clicking_off_dropdown_menu(the_filter_count):
+    global post_is_draft
+    click_off_dropdown_menu = driver.find_element('xpath', '//*[contains(@class, "aspects-category-radix__title")]')
+    click_off_dropdown_menu.click()
+    the_filter_count += 1
+    post_is_draft = True
+    
+def sharpening_specifications(the_size, the_color, the_department, the_title, the_category):
+    """
+    whole list of filters used to sharpen the specifications
+    """
+    global filter_count, post_is_draft
+    
+    #this extracts the category text to identify the gender of the item
+    WebDriverWait(driver, 20).until(EC.element_to_be_clickable(('xpath', '//*[contains(@aria-label, "Selected category")]')))
+    category_edit_button = driver.find_element('xpath', '//*[contains(@aria-label, "Selected category")]')
+    current_category_text = category_edit_button.text.lower()
+    filter_count = 0
+    the_title = the_title.lower().split(' ')
+    try:
+        WebDriverWait(driver, 7).until(EC.element_to_be_clickable(('xpath', '//*[contains(@class, "filter-button filter-button--unselected filter-menu-button__button")]')))
+        unchosen_filters_len = driver.find_elements('xpath', '//*[contains(@class, "filter-button filter-button--unselected filter-menu-button__button")]')
+        for _ in range(len(unchosen_filters_len)):
+            the_value = ''
+            #since stale element will pop up without reidentifying, need to reidentify without using the one above
+            WebDriverWait(driver, 20).until(EC.element_to_be_clickable(('xpath', './/*[contains(@class, "filter-button__cell")]')))
+
+            unchosen_filters = driver.find_elements('xpath', '//*[contains(@class, "filter-button filter-button--unselected filter-menu-button__button")]')
+            filter_text = unchosen_filters[filter_count].find_element('xpath', './/*[contains(@class, "filter-button__cell")]').text
+
+            #this click onto the dropdown menu to show the resultsF
+            driver.execute_script('arguments[0].click();', unchosen_filters[filter_count])
+
+            frequently_selected_one_options = ['Sleeve Length', 'Season']
+            frequently_selected_all_option = ['Theme', 'Features', 'Look', 'Performance/Activity']
+            
+            if filter_text == 'Size Type':
+                petite_sizes = ['XS', 'XXS', 'S']
+                regular_size = ['M', 'L', 'XL']
+                big_tall_size = ['2XL', 'XXL', 'XL', 'XXXL', '3XL', 'XXXXL', '4XL', '5XL', 'XXXXXL']
+                if the_size in petite_sizes and 'women' in current_category_text:
+                    the_value = 'Petite'
+                elif the_size in regular_size or the_size in petite_sizes:
+                    the_value = 'Regular'
+                elif the_size in big_tall_size:
+                    if 'women' in current_category_text:
+                        the_value = 'Plus'
+                    else:
+                        the_value = 'Big & Tall'
+
+            elif filter_text == 'Size' or filter_text == 'Size (Men\'s)':
+                the_size = the_size.replace('"', '')
+                #this identifies if the size is a number and transforms the number to the letter value in dictionary above
+                for letter, sizes in waist_size_to_letter.items():
+                    if the_size in sizes:
+                        the_size = letter
+                        break
+                if the_size == 'XXL':
+                    the_value = '2XL'
+                elif the_size == 'XXXL':
+                    the_value = '3XL'
+                elif the_size == 'XXXXL':
+                    the_value = 'One Size' 
+                elif the_size == ' ':
+                    the_value = 'One Size'
+                else:
+                    the_value = the_size
+            
+            elif filter_text == 'Inseam':
+                pattern = r'\d{2}x\d{2}'
+                found_match = False
+                for ind_word in the_title:
+                    inseam_match = re.search(pattern, ind_word)
+                    if inseam_match:
+                        inseam_match = inseam_match.group()
+                        inseam_match = re.split(r'[xX]', inseam_match)
+                        the_value = inseam_match[1] + ' in'
+                        found_match = True
+                        break 
+                if not found_match:
+                    try:
+                        frequently_selected_options('one')
+                    except TimeoutException:
+                        clicking_off_dropdown_menu(filter_count)
+                    continue
+
+            elif filter_text == 'Color':
+                rgb_estimate_color = color_identifier()
+                if rgb_estimate_color != the_color:
+                    the_value = rgb_estimate_color.title()
+                else:
+                    the_value = the_color
+
+            elif filter_text == 'Fit':
+                the_value = 'Classic'
+
+            elif filter_text == "Brand":
+                for key, value in total_brand_list.items():
+                    if any([v.lower() in the_title for v in value]):
+                        if key == 'extras':
+                            for v in value:
+                                if v in the_title:
+                                    the_value = v
+                                    break
+                        else:
+                            the_value = key.title()
+                            if the_value == 'Gant':
+                                the_value = 'GANT'
+                            if the_value.upper() in sports_list:
+                                the_value = "Unbranded"
+                            break
+                else:
+                    try:
+                        frequently_selected_options('one')
+                    except TimeoutException:
+                        clicking_off_dropdown_menu(filter_count)
+                    continue
+
+            elif filter_text == 'Style':
+                style_bag_list = ['backpack', 'duffle', 'tote', 'clutch', 'satchel', 'crossbody']
+                style_jeans_list = ['ankle', 'bootcut', 'capri', 'cropped', 'flared', 'khakis', 'paperbag', 'skinny', 'straight', 'tapered', 'wide-leg']
+                button_options = driver.find_elements('xpath', '//*[contains(@class, "field__label")]')
+                for but in button_options:
+                    button_text = but.text.lower()
+                    if button_text in the_title:
+                        driver.execute_script("arguments[0].click();", but)
+                        break
+                    if button_text == 'Basic':
+                        the_value = 'Basic'
+                else:
+                    try:
+                        frequently_selected_options('one')
+                        continue
+                    except TimeoutException:
+                        if the_category == 'hats':
+                            the_value = 'Snapback'
+                        elif the_category == 'bags & purses':
+                            if any(style_bag in the_title for style_bag in style_bag_list):
+                                the_value = next(style_bag.title() for style_bag in style_bag_list if style_bag in the_title)
+                            elif 'gym' in the_title: #backpack, duffle, tote
+                                the_value = 'Gym Bag'
+                            elif 'fanny' in the_title:
+                                the_value = 'Belt Bag & Fanny Pack'
+                            else:
+                                clicking_off_dropdown_menu(filter_count)
+                                continue
+                        elif the_category == 'jeans':
+                            if any(style_jeans in the_title for style_jeans in style_jeans_list):
+                                the_value = next(style_jeans.title() for style_jeans in style_jeans_list if style_jeans in the_title)
+                            else:
+                                clicking_off_dropdown_menu(filter_count)
+                                continue
+                                
+            elif filter_text == 'Style Code':
+                category_texts = driver.find_elements('xpath', '//*[contains(@class, "field__label")]')
+                for category_text in category_texts:
+                    if category_text.text.lower() in the_title:
+                        the_value = category_text.text
+                        break
+                clicking_off_dropdown_menu(filter_count)
+                continue
+
+            elif filter_text == 'Department':
+                the_value = the_department
+
+            elif filter_text in frequently_selected_one_options:
+                try:
+                    frequently_selected_options('one')
+                except TimeoutException:
+                    clicking_off_dropdown_menu(filter_count)
+                continue
+
+            elif filter_text in frequently_selected_all_option:
+                try:
+                    frequently_selected_options('all')
+                except TimeoutException:
+                    clicking_off_dropdown_menu(filter_count)
+                continue
+
+            elif filter_text == 'Type':
+                type_category_list = ['blazer', 'cape', 'coatigan', 'jacket', 'poncho', 'vest', 'tank', 'polo', 'hoodie']
+                if any(type_cat in the_title for type_cat in type_category_list):
+                    the_value = next(type_cat.title() for type_cat in type_category_list if type_cat in the_title)
+                elif 'sweats' in the_title or 'legging' in the_title:
+                    the_value = 'Pants'
+                elif 'sleeve' in the_title:
+                    the_value = 'Sweatshirt'
+                else:
+                    try:
+                        frequently_selected_options('one')
+                    except TimeoutException:
+                        clicking_off_dropdown_menu(filter_count)
+                    continue
+
+            elif filter_text == 'Outer Shell Material' or filter_text == 'Material':
+                material_list = ['cotton', 'leather', 'wool', 'silk', 'cashmere', 'poncho']
+                try:
+                    frequently_selected_options('one')
+                except TimeoutException:
+                    if any(material in the_title for material in material_list):
+                        the_value = next(material.title() for material in material_list if material in the_title)
+                    else:
+                        if filter_text == 'Outer Shell Material':
+                            the_value = 'Polyester'
+                        elif filter_text == 'Material':
+                            the_value = 'Cotton'
+                    
+            elif filter_text == 'Product':
+                if 'jersey' in the_title:
+                    the_value = 'Jersey'
+
+            elif filter_text == 'Team':
+                category_edit_button = driver.find_element('xpath', '//*[contains(@aria-label, "Selected category")]')
+                current_category_text = category_edit_button.text
+                if 'NHL' in current_category_text:
+                    the_team_dic = nhl_teams
+                elif 'NBA' in current_category_text:
+                    the_team_dic = nba_teams
+                elif 'NFL' in current_category_text:
+                    the_team_dic = nfl_teams
+                elif 'MLB' in current_category_text:
+                    the_team_dic = mlb_teams
+                the_value = find_team_value(the_title, the_team_dic)#issue with extracting proper team value, maybe issue with lower() upper()??
+
+            elif filter_text == 'Decade':
+                if '90' in the_title:
+                    decade = '90'
+                elif '80' in the_title:
+                    decade = '80'
+                elif '70' in the_title:
+                    decade = '70'
+                else:
+                    decade = '90'
+                the_value = f'19{decade}s'
+
+            elif filter_text == 'Gender':
+                the_value = identifying_gender(the_title)
+
+            time.sleep(2)
+            try:
+                inserting_value_text = driver.find_element('css selector', '[aria-label="Search results"]')
+                inserting_value_text.send_keys(the_value)
+            except:
+                # print(e)
+                # traceback.print_exc()
+                continue
+            time.sleep(1)
+
+            #since we already searched for the value above, this identifies and clicks the correct value
+            # print(f' {filter_text}  {the_value}')
+            clicking_value_type = driver.find_elements('css selector', f'[value^="{the_value}"]')
+            try:
+                #looks for the correct value in this
+                driver.execute_script('arguments[0].click();', clicking_value_type[1])
+            except Exception as e:
+                # print(e)
+                # traceback.print_exc()
+                #but if correct value isnt specified, will just go to frequently_selected_options()
+                frequently_selected_options('one')
+            #clicks off the dropdown menu
+            click_off_dropdown_menu = driver.find_element('xpath', '//*[contains(@class, "aspects-category-radix__title")]')
+            driver.execute_script('arguments[0].click();', click_off_dropdown_menu)
+            time.sleep(2)
+    except: #this means that there is no unfiltered categories to fill in
+        # print(ex)
+        # traceback.print_exc()
+        pass
+
+def clicking_select_all():
+    """
+    just click if any specifications are missed, does this when first entering the page to add photos to item
+    """
+    # select all applications to list faster
+    checkbox_control_options = ['Brand', 'Type', 'Color', 'Style']
+    select_all_buttons = driver.find_elements('xpath', '//*[contains(@class, "checkbox__control")]')
+    for buttons in select_all_buttons:
+        if buttons.get_attribute('value') in checkbox_control_options:
+            driver.execute_script("arguments[0].click();", buttons)
+            break
+
+def moving_onto_next_listing(find_free):
+    """
+    completely moves into next listing while also using an argument to find
+    the total amount of free listings left to ensure we dont spend any money on this
+    since for ebay, each posts cost money
+    """
+    global FREE_LISTING_NUMBERS
+    if find_free == 'Yes': #! the free listing number location has changed, so now have to go to overview, and search for the number there, and rather than just l
+        #! searching for it every time, I can just search for it once then use the decrement operator to just lower that number every time
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "numbers")]')))
+        free_listing_numbers_finder = driver.find_elements('xpath', '//*[contains(@class, "numbers")]')
+        FREE_LISTING_NUMBERS = free_listing_numbers_finder[-1].text
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "me-fake-button   fake-btn fake-btn--primary")]')))
+        single_listing = driver.find_elements('xpath', '//*[contains(@class, "me-fake-button   fake-btn fake-btn--primary")]')
+        driver.execute_script('arguments[0].click();', single_listing[0])
+        print(FREE_LISTING_NUMBERS)
+
+        # WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "textual-display image-banner-card__action fake-btn fake-btn--fluid fake-btn--primary")]')))
+        # single_listing_part_2 = driver.find_elements('xpath', '//*[contains(@class, "textual-display image-banner-card__action fake-btn fake-btn--fluid fake-btn--primary")]')
+        # driver.execute_script('arguments[0].click();', single_listing_part_2[0])
+
+    WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "fake-menu-button__button btn btn--primary")]')))
+    create_listing_button = driver.find_element('xpath', '//*[contains(@class, "fake-menu-button__button btn btn--primary")]')
+    create_listing_button.click()
+
+    singe_listing = driver.find_element('xpath', '//*[contains(@class, "fake-menu-button__item")]')
+    singe_listing.click()
+    print('+++++++++++++++++++++++++++++++++++++++++++++++++++')
+
+def inserting_price(the_price):
+    """
+    insert price into price box
+    compares price from database with recommended price from ebay and chooses higher number
+    """
+    #checking if format is in buy now rather than auction
+    price_input = driver.find_element('css selector', '[name="price"]')
+    driver.execute_script("arguments[0].scrollIntoView(true)", price_input)
+    start_price_checker = driver.find_elements('xpath', '//*[contains(@name, "startPrice")]')
+    if len(start_price_checker) == 1:
+        button_text = driver.find_elements('xpath', '//*[contains(@class, "btn__text")]')
+        for te in button_text:
+            if te.text == "Auction":
+                driver.execute_script("arguments[0].click()", te)
+                time.sleep(2)
+                listboxes = driver.find_elements('xpath', '//*[contains(@class, "listbox__value")]')
+                for li in listboxes:
+                    if li.text == 'Buy It Now':
+                        driver.execute_script("arguments[0].click()", li)
+                        time.sleep(2)
+
+    #inserting price
+    WebDriverWait(driver, 80).until(EC.presence_of_element_located(('css selector', '[name="price"]')))
+    price_input = driver.find_element('css selector', '[name="price"]')
+    current_listed_price = price_input.get_attribute('value')
+
+    #checks to see which number is higher, my price, or the estimated price, and goes with higher number
+    try:
+        if (float(the_price) - 3) > float(current_listed_price):
+            for i in range(7):
+                price_input.send_keys(Keys.BACKSPACE)
+            time.sleep(.5)
+    except:
+        pass
+    price_input.send_keys(the_price)
+    time.sleep(4)
+################################################################
+################################################################################################################################
+################################################################################################################################
+################################################################################################################################
+################################################################
+################################################################
+#start number = 1
+LAST_NUMBER = 257
+ #211################################################################
+################################################################################################################################
+################################################################################################################################
+################################################################################################################################
+################################################################
+#identify how many free items  you get to post and dont go over that amount
+
+def ebay_poster(my_template_name):
+    global post_is_draft
+    global id_num, title
+    print("Starting Ebay Poster")
+    # WebDriverWait(driver, 5).until(EC.presence_of_element_located(('css selector', '[id="checkbox"]')))
+    # captcha_checkbox = driver.find_element('css selector', '[id="checkbox"]')
+    # driver.execute_script('arguments[0].click();', captcha_checkbox)
+    # this doenst work so maybe find some image recognition software if you really want to, but not necessary
+
+    start_up('rv')# rv, other
+    moving_onto_next_listing('Yes')
+    id_range = cursor.execute('SELECT id FROM dp_inv_isellclothes2001 ORDER BY id DESC LIMIT 1;').fetchone()
+    id_range = id_range[0]
+    for id_num in range(id_range):
+        if id_num < LAST_NUMBER:
+        
+            continue
+        if FREE_LISTING_NUMBERS == 0:
+            logging.debug('no more free listings, wait till next month')
+            break
+        db_query = cursor.execute(f"SELECT dp_title, dp_price, dp_category, dp_color1, dp_size, dp_condition, dp_men_or_wmn, dp_gen_category FROM dp_inv_isellclothes2001 WHERE id = {id_num};").fetchone()
+
+        try:
+            title = db_query[0].lower() 
+            title = title.replace('like new', 'Slightly Used') 
+            #!need to make more phrases, for words like new, nwt
+            title = title.title()
+            price = db_query[1]
+            # print(price)
+            category = db_query[2]
+            category = category.lower()
+            # print('////' + category + '////')
+            color = db_query[3]
+            # print(color)
+            size = db_query[4]
+            # print(f'////{size}////')
+            condition = db_query[5]
+            # print(condition)
+            gender = db_query[6]
+            gender = gender.replace('swear', '').lower()
+            # print(gender)
+        except TypeError:
+            continue
+        
+        post_is_draft = False
+        print(f' free listings left {FREE_LISTING_NUMBERS}')
+        print(f'adding title {str(id_num)} {title}')
+        WebDriverWait(driver, 20).until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "textbox__control textbox__control--fluid")]')))
+        title_text_box = driver.find_element('xpath', '//*[contains(@class, "textbox__control textbox__control--fluid")]')
+        title_text_box.send_keys(title)
+        time.sleep(3)
+
+        #title search button
+        driver.find_element('xpath', '//*[contains(@class, "keyword-suggestion__button btn btn--primary")]').click()
+
+        adjusting_category(category, gender, title)
+
+        sharpening_specifications(size, color, gender, title, category)
+
+        continue_wo_match()
+
+        picking_condition(condition, title)
+
+        #this checks for new accounts, if the got_it button needs to be pressed
+        WebDriverWait(driver, 5).until(EC.presence_of_element_located(('xpath',' //*[contains(@class, "btn btn--large btn--primary")]')))
+        got_it_button = driver.find_elements('xpath',' //*[contains(@class, "btn btn--large btn--primary")]')
+        if len(got_it_button) == 2:
+            got_it_button[0].click()
+
+        adding_pics(id_num)
+        
+        clicking_select_all()
+
+        #general description
+        #! this commented code is to use a general description
+        # custom_templates_button = driver.find_element('xpath', '//*[contains(@class, "menu-button__button btn btn--form")]')
+        # driver.execute_script("arguments[0].scrollIntoView(true)", custom_templates_button)
+        # time.sleep(1)
+
+        # driver.execute_script("arguments[0].click();", custom_templates_button)
+        # time.sleep(1)
+
+        #!this lets ai create a description for you
+        ai_description = driver.find_element('xpath', '//*[contains(@class, "ai-description-button")]')
+        driver.execute_script("arguments[0].scrollIntoView(true)", ai_description)
+        driver.execute_script('arguments[0].click();', ai_description)
+
+        #with this make sure that it is clear that the user already has the template created with the name specified
+        template_names = driver.find_elements('xpath', '//*[contains(@class, "dropdown__option template-name")]')
+        for template in template_names:
+            if template.text == my_template_name:
+                action.move_to_element(template).perform()
+
+                time.sleep(1)
+                insert = driver.find_elements('xpath', '//*[contains(@role, "menuitem")]')
+                for i_id ,ins in enumerate(insert):
+                    ins_text = ins.text
+                    if ins_text == 'Insert':
+                        insert = insert[i_id]
+                        break
+
+                time.sleep(1.5)
+                action.move_to_element(insert).perform()
+                time.sleep(.5)
+                try:
+                    driver.execute_script("arguments[0].click()", insert)
+                except AttributeError:
+                    action.move_to_element(insert).perform()
+                    driver.execute_script("arguments[0].click()", insert)
+                time.sleep(1)
+            else:
+                logging.debug('Please make sure you have your template already created')
+        inserting_price(price)
+
+        try:
+            shipping_apply_button = driver.find_element('xpath', '//*[contains(@class, "textual-display package-details__recommendation-apply fake-link")]')
+            driver.execute_script("arguments[0].scrollIntoView(true)", shipping_apply_button)
+            driver.execute_script('arguments[0].click()', shipping_apply_button)
+            print(f'{Fore.CYAN}this has clicked shipping')
+        except Exception as e:
+            # print(e)
+            # traceback.print_exc()
+            pass
+
+        #checking for lack of shipping description
+        minor_weight = driver.find_element('css selector', '[name="minorWeight"]')
+        minor_weight = minor_weight.get_attribute('value')
+        package_information = driver.find_elements('css selector', '[name^="package"]')
+        package_dimensions = ['7', '10', '4']
+        if minor_weight == '0':
+            minor_weight.send_keys('15')
+            for p, pack in enumerate(package_information):
+                pack.send_keys(package_dimensions)[p]
+
+        # #list it button
+        list_it_button = driver.find_elements('xpath', '//*[contains(@class, "btn btn--large")]')
+        if post_is_draft is False:
+            list_it_iterator = 0
+        elif post_is_draft is True:
+            list_it_iterator = 1
+        print(f'list it operator {list_it_iterator}')
+        driver.execute_script("arguments[0].scrollIntoView(true)",list_it_button[list_it_iterator])
+        time.sleep(1)
+        driver.execute_script('arguments[0].click();', list_it_button[list_it_iterator])
+        print('list it button has been clicked')
+        #done with listing button
+        try:
+            if post_is_draft is False:
+                WebDriverWait(driver, 8).until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "fake-btn fake-btn--primary")]')))
+                done_button = driver.find_element('xpath', '//*[contains(@class, "fake-btn fake-btn--primary")]')
+                driver.execute_script("arguments[0].click()", done_button)
+
+            #create a new listing button
+            time.sleep(1)
+            print('overview page')
+            moving_onto_next_listing('No')
+        except TimeoutException:
+            print('ERROR WITH THIS OPERATION TIMEOUT')
+            #this is specifically to cath dupliacate listings and move on from there
+            WebDriverWait(driver, 5).until(EC.presence_of_element_located(('xpath',' //*[contains(@class, "page-notice__header")]')))
+            text_displays = driver.find_elements('xpath', '//*[contains(@class, "textual-display")]')
+            for the_text in text_displays:
+                print(the_text.text)
+                if the_text.text == 'duplicate listing':
+                    logging.info('DUPLICATE LISTING DUPLICATE LISTING DUPLICATE LISTING')
+                    save_draft_button = driver.find_element('css selector', '[aria-label="Save for later"]')
+                    driver.execute_script("arguments[0].scrollIntoView(true)", save_draft_button)
+                    driver.execute_script('arguments[0].click()', save_draft_button)
+                    moving_onto_next_listing('No')
+                    break
+                elif the_text.text == 'Description':
+                    logging.debug('goes into description')
+                    try:
+                        WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath',' //*[contains(@class, "se-rte__ai-description-feedback-link fake-link")]')))
+                        provide_help_ai_feedback_button = driver.find_element('xpath',' //*[contains(@class, "se-rte__ai-description-feedback-link fake-link")]')
+                        driver.execute_script("arguments[0].scrollIntoView(true)", provide_help_ai_feedback_button)
+                        driver.execute_script('arguments[0].click();',provide_help_ai_feedback_button)
+                        
+                        WebDriverWait(driver, 5).until(EC.presence_of_element_located(('css selector', '[for="0_star_5"]') ))
+                        ai_description_feedback = driver.find_elements('css selector', '[for="0_star_5"]') 
+                        driver.execute_script('arguments[0].click()', ai_description_feedback[-1])
+                        
+                        # WebDriverWait(driver, 10).until(EC.presence_of_element_located(('css selector', '[id="submitFdbk"]')))
+                        time.sleep(5)
+                        # five_star_ai_desc_feedback = driver.find_element('css selector', '[for="0_star_5"]')
+                        # driver.execute_script('arguments[0].click()', five_star_ai_desc_feedback)
+                        
+                        feedback_send_button = driver.find_element('xpath', '//*[contains(@class, "btn btn--primary btn-no-shadow")]')
+                        driver.execute_script('arguments[0].click()', feedback_send_button)
+                        # is not identifying the pop up feedback menu, figure this issue out, maybe just refocus on the new pop up menu somehow?
+                        
+                        exit_outof_feedback = driver.find_element('xpath', '//*[contains(@class, "icon-btn lightbox-dialog__close")]')
+                        driver.execute_script('arguments[0].click()', exit_outof_feedback)
+                    except IndexError:
+                        print('THERE IS AN INDEX ERROR FOR AI DESCRIPTION BUTTON')
+                        ai_desc_button = driver.find_element('xpath', '//*[contains(@class, "se-rte__ai-description-button btn")]')
+                        driver.execute_script("arguments[0].scrollIntoView(true)", ai_desc_button)
+                        driver.execute_script('arguments[0].click();',ai_desc_button)
+                        time.sleep(1)
+                        driver.execute_script('arguments[0].click();',ai_desc_button)
+                        time.sleep(2)
+                        
+                        #listing button
+                        list_it_button = driver.find_elements('xpath', '//*[contains(@class, "btn btn--large")]')
+                        if post_is_draft is False:
+                            list_it_iterator = 0
+                        elif post_is_draft is True:
+                            list_it_iterator = 1
+                        driver.execute_script("arguments[0].scrollIntoView(true)",list_it_button[list_it_iterator])
+                        time.sleep(1)
+                        driver.execute_script('arguments[0].click();', list_it_button[list_it_iterator])
+
+                    moving_onto_next_listing('No')
+
+try:
+    ebay_poster('General Description')
+    print('MOVING ONTO THE NEXT LISTING NEXT LISTING NEXT LISTINGS')
+except Exception as e:
+    traceback.print_exc()
+    print(e)
+
+
+#need to crate a database table for this, this should be easy, literally just need to add the exact same info the the og dp table you are referring to to the database,
+#all that needs to be adjusted is...
+#the url link
+#any form of clicks or views, or sumn i can use for data
+#
+#make code for duplicates to just move on to next post
+#make code for deleting all drafts
+
