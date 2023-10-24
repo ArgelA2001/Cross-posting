@@ -1,0 +1,196 @@
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import Select
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import time
+import sqlite3
+import re
+
+conn = sqlite3.connect(r"D:\Selenium_python2\Depop_database.db")
+cursor = conn.cursor()    
+chrome_options = Options()
+chrome_options.add_experimental_option("detach", True)
+driver = webdriver.Chrome("D:\\Selenium_python2\\chromedriver.exe", chrome_options=chrome_options)
+driver.get("https://signin.ebay.com/ws/eBayISAPI.dll?SignIn&ru=https%3A%2F%2Fwww.ebay.com%2F")
+
+def ebay_start_up(account_name):
+    """
+    this logs you into the assigned account you chose
+    then from here it takes you to the solds page
+    """
+    ebay_sold_link = "https://www.ebay.com/sh/ord/?filter=status:ALL_ORDERS"
+    if account_name == 'rv':
+        acc_name = 'TheRealVintage'
+        acc_pw = 'Pineappleguy305'
+    elif account_name == 'other':
+        acc_name = 'ararr_92'
+        acc_pw = 'Fernanda*1979'
+
+    WebDriverWait(driver, 40).until(EC.presence_of_element_located(('css selector', '[id="userid"]')))
+    username_entry = driver.find_elements('css selector', '[id="userid"]')
+    username_entry[0].send_keys(acc_name) 
+    time.sleep(2)
+    username_continue_button = driver.find_element('css selector', '[id="signin-continue-btn"]')
+    username_continue_button.click()
+    
+    WebDriverWait(driver, 80).until(EC.element_to_be_clickable(('xpath', '//*[@id="pass"]')))
+    time.sleep(1)
+    password_entry = driver.find_element('css selector', '[id="pass"]')
+    password_entry.send_keys(acc_pw)
+    time.sleep(1)
+    sign_in_button = driver.find_element('css selector', '[id="sgnBt"]')
+    sign_in_button.click()
+    time.sleep(3)
+    driver.execute_script("window.open('{}');".format(ebay_sold_link))
+    driver.switch_to.window(driver.window_handles[-1])
+    time.sleep(3)
+
+sold_labels = ['Item Condition', 'Sale Date', 'Brand', 'Department', 'Type', 'Style', 'Size', 'Color']
+
+ebay_title_list = []
+ebay_link_list = []
+ebay_price_list = []
+
+ebay_item_condition_list = []
+ebay_sale_date_list = []
+ebay_brand_list = []
+ebay_department_list = []
+ebay_type_list = []
+ebay_style_list = []
+ebay_size_list = []
+ebay_color_list = []
+ebay_start_date_list = []
+ebay_images_list = []
+ebay_buyer_name_list = []
+
+def ebay_sold_info_scraper():
+    """
+    while we are on solds page
+    this scrapes all sold links then checks for the value info
+    """
+
+    sold_labels_strings_list = ['ebay_item_condition_list', 'ebay_sale_date_list', 'ebay_brand_list', 'ebay_department_list', 'ebay_type_list',
+                        'ebay_style_list', 'ebay_size_list', 'ebay_color_list'] 
+    
+    sold_labels_list = [ebay_item_condition_list, ebay_sale_date_list, ebay_brand_list, ebay_department_list, ebay_type_list,
+                        ebay_style_list, ebay_size_list, ebay_color_list] 
+    sold_links = driver.find_elements('xpath', '//*[contains(@href, "https://www.ebay.com/itm/")]')
+
+    #finding the price and revenue back
+    price_of_item = driver.find_elements('css selector', '[href^="/mesh/ord/details"]')# it would be every 3rd element for this one
+    each_item_price = price_of_item[2::3]
+    for item_price in each_item_price:
+        item_price = item_price.text.replace('$', '')
+        item_price_after_tax = round((float(item_price) * .7576), 2)
+        # print(item_price_after_tax)
+        ebay_price_list.append(item_price_after_tax)
+
+    for l, links in enumerate(sold_links):
+        post_link_class = links.get_attribute('class')
+        #!this makes sure that it is checking current solds, if not this will check any links available, such as offers, expired offers, etc
+        if 'item-link' in post_link_class:
+            continue
+        post_link = links.get_attribute('href')
+        ebay_title_list.append(links.text)
+        ebay_link_list.append(post_link)
+        # print(post_link)
+        driver.execute_script(f"window.open('{post_link}');")
+        driver.switch_to.window(driver.window_handles[-1])
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located(('css selector', '[src^="https://i.ebayimg.com/images/g/"]')))
+        image_links = driver.find_elements('xpath', '//*[contains(@class, "ux-image-magnify__image--original")]')
+        # print(f' image links{len(image_links)}')
+        img_list = []
+        for l, links in enumerate(image_links):
+            image_link = links.get_attribute('src')
+            time.sleep(.5)
+            if image_link is None:
+                continue
+            img_list.append(image_link)
+        ebay_images_list.append(img_list)
+
+        ebay_start_date = driver.find_elements('xpath', '//*[contains(@class, "ux-textspans")]') #13 characters
+        for s, start in enumerate(ebay_start_date):
+            if start.text == 'Buyer ID:':
+                ebay_buyer_name_list.append(ebay_start_date[s+1].text)
+            elif start.text == 'Start time:':
+                ebay_start_date_list.append(ebay_start_date[s+1].text[:13])
+                break
+                
+                
+        #this clicks the purchase item
+        try:
+            WebDriverWait(driver, 6).until(EC.presence_of_element_located(('xpath', "//*[contains(text(), 'View purchased item')]")))
+        except TimeoutError:
+            driver.refresh()
+            WebDriverWait(driver, 6).until(EC.presence_of_element_located(('xpath', "//*[contains(text(), 'View purchased item')]")))
+            
+        view_purchased_item = driver.find_element('xpath', "//*[contains(text(), 'View purchased item')]")
+        driver.execute_script('arguments[0].click();', view_purchased_item)
+
+        ebay_sold_label = driver.find_elements('css selector', '[class="left wbr cc-labels-values__label"]')
+        ebay_sold_info = driver.find_elements('css selector', '[class="left wbr cc-labels-values__value"]')
+
+        used_sold_labels = []
+        for s, sold_info in enumerate(ebay_sold_info):
+            if ebay_sold_label[s].text in sold_labels:
+                sold_labels_index = sold_labels.index(ebay_sold_label[s].text)
+                # print(ebay_sold_label[s].text, ebay_sold_info[s].text)
+                used_sold_labels.append(ebay_sold_label[s].text)
+                sold_labels_list[sold_labels_index].append(ebay_sold_info[s].text)
+
+        # print(f'used_sold_labels {used_sold_labels}')
+        used_set = set(used_sold_labels)
+        sold_set = set(sold_labels)
+        missing_labels = sold_set - used_set
+        missing_labels = list(missing_labels)
+        
+        
+        # print(missing_labels)
+        print(f'{l} missing labels')
+        print(len(missing_labels))
+        # print(missing_labels)
+        for miss in missing_labels: #!this needs some work still
+            # print(miss.lower())
+            miss_list = f'ebay_{miss.lower()}_list'
+            print(miss_list)
+            for s, sold_label in enumerate(sold_labels_strings_list):
+                # print(sold_label)
+                if miss_list == str(sold_label):
+                    # index = sold_labels_list.index(miss_list)
+                    print(f'adding blank for {miss_list}')
+                    sold_labels_list[s].append('')
+                    break
+
+        driver.close()
+        driver.switch_to.window(driver.window_handles[-1])
+        time.sleep(1)
+
+
+ebay_start_up('rv')
+
+ebay_sold_info_scraper()
+ 
+# print(f' title {ebay_title_list}')
+# print(f' price {ebay_price_list}')
+# print(f' link {ebay_link_list}')
+# print(f' item conditon {ebay_item_condition_list}')
+# print(f' sale date {ebay_sale_date_list}')
+# print(f' brand list {ebay_brand_list}')
+# print(f' department list {ebay_department_list}')
+# print(f' type {ebay_type_list}')
+# print(f' style {ebay_style_list}')
+# print(f' size {ebay_size_list}')
+# print(f' color {ebay_color_list}')
+# print(f' images {ebay_images_list}')
+# print('')
+# print(' ')
+# print(' ')
+zipped_list = zip(ebay_title_list, ebay_price_list, ebay_link_list, ebay_item_condition_list, ebay_buyer_name_list, ebay_start_date_list, ebay_sale_date_list, ebay_brand_list, ebay_department_list, ebay_type_list, ebay_style_list, ebay_size_list, ebay_color_list, ebay_images_list)
+
+for zipped in zipped_list:
+    print(zipped)
+    print(' ')
+    
