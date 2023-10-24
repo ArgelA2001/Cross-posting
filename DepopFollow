@@ -1,0 +1,195 @@
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import Select
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import time
+import sqlite3
+import traceback
+chrome_options = Options()
+chrome_options.add_experimental_option("detach", True)
+driver = webdriver.Chrome("D:\\Selenium_python2\\chromedriver.exe", chrome_options=chrome_options)
+account_name = "_realvintage"
+# account_name = 'isellclothes2001'
+url = 'https://www.depop.com/' + account_name + '/'
+driver.get(url)
+
+def start_up():
+    time.sleep(1)
+    driver.find_element('xpath', '//*[@id="__next"]/div/div[2]/div[2]/button[2]').click()
+    time.sleep(1.5)
+
+def sign_in(which_account):
+    driver.find_element('xpath', '//*[contains(@class, "styles__NavLinkText")]').click()
+    time.sleep(2)
+    if which_account == '_realvintage':
+        account_email = 'argelarroyo2001@gmail.com'
+        account_password = 'Pineappleguy305'
+    elif which_account == 'isellclothes2001':
+        account_email = 'isellclothes2001@gmail.com'
+        account_password = 'Fernanda*1979' 
+
+    username = WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[@id="username"]')))
+    username.send_keys(account_email)
+    time.sleep(2)
+    driver.find_element('xpath', '//*[@id="password"]').send_keys(account_password) 
+    driver.find_element('xpath', '//*[@id="main"]/div[3]/form/button').click()
+    time.sleep(20)
+
+def follow_list(account_name):
+    current_follower_count = driver.find_element('css selector', '[data-testid="following__count"]')
+    current_follower_count = current_follower_count.text
+    needed_followers = 7500 - int(current_follower_count) 
+    print(needed_followers)
+    post_url = 'https://www.depop.com/' + account_name + '/'
+    driver.execute_script("window.open('{}');".format(post_url))
+    driver.close()
+    time.sleep(1)
+    driver.switch_to.window(driver.window_handles[0])
+    # followers_button = driver.find_elements('xpath', '//*[contains(@class, "styles__StatsValue-sc")]')
+    # followers_button[0].click()
+    following_button = driver.find_elements('xpath', '//*[contains(@class, "styles__StatsValue-sc")]')
+    following_button[1].click()
+    not_following = driver.find_elements('css selector', '[data-testid="followButton"]')
+    not_following_clicker = not_following[1:]
+    try: 
+        WebDriverWait(driver, 10).until(EC.visibility_of_element_located(('css selector', '[id="modal__headerWrapper"]')))
+        driver.find_element('css selector', '[data-testid="message--no-users"]')
+        switch_to_followers = driver.find_element('css selector', '[data-testid="follows-tabs_followers-label"]')
+        switch_to_followers.click()
+    except:
+        pass
+
+    delay = 1
+    time.sleep(3)
+    # for i in range(needed_followers):
+    for i in range(150):
+        try:
+            not_following = driver.find_elements('css selector', '[data-testid="followButton"]')
+            not_following_clicker = not_following[1:]
+            # following = driver.find_elements('css selector', '[data-testid="followingButton"]')
+            # driver.execute_script("arguments[0].scrollIntoView(true);", following[-1])
+            while len(not_following) > 0:
+                for ele in not_following:
+                    driver.execute_script("arguments[0].scrollIntoView(true);", ele)
+                    driver.execute_script("arguments[0].click()", ele)
+                    time.sleep(delay)
+                scroll_down = driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                scroll_down
+                not_following = driver.find_elements('css selector', '[data-testid="followButton"]')
+                try:
+                    driver.execute_script("arguments[0].scrollIntoView(true);", not_following[-1])
+                except:
+                    following = driver.find_elements('css selector', '[data-testid="followingButton"]')
+                    driver.execute_script("arguments[0].scrollIntoView(true);", following[-1])
+            else:
+                scroll_down = driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                scroll_down
+                try:
+                    driver.execute_script("arguments[0].scrollIntoView(true);", not_following[-1])
+                except:
+                    following = driver.find_elements('css selector', '[data-testid="followingButton"]')
+                    driver.execute_script("arguments[0].scrollIntoView(true);", following[-1])
+        except Exception as e:
+            print('error')
+            print(e)
+            traceback.print_exc()
+            finding_verified()
+            finding_verified_info()
+            sqlite_database_for_dp_verified()
+
+total_ver_account_name = []
+total_ver_account_link = []
+total_ver_account_sold = []
+total_ver_account_followers = []
+def finding_verified():
+    time.sleep(3)
+    total_accounts = driver.find_elements('xpath', '//*[contains(@class, "AvatarWithLink__AvatarLink")]')
+    print(len(total_accounts))
+    for account in total_accounts:
+        fv = 0
+        nested_tags = account.find_elements('css selector', "*")
+        for tag in nested_tags:
+            fv += 1
+        if fv == 4:
+            account_link = account.get_attribute('href')
+            account_name = account_link.replace('https://www.depop.com/', '').replace('/', '')
+            total_ver_account_name.append(account_name)
+            total_ver_account_link.append(account_link)
+            print(account_name)
+            print(account_link)
+
+def finding_verified_info():
+    for i, link in enumerate(total_ver_account_link):
+        acc_name = total_ver_account_name[i]
+        print(link)
+        driver.execute_script("window.open('{}');".format(link))
+        time.sleep(3)
+        driver.close()
+        driver.switch_to.window(driver.window_handles[0])
+        account_sold = driver.find_element('xpath', '//*[contains(@class, "Signal-style__StyledText")]')
+        account_sold_text = account_sold.text
+        account_sold_text = account_sold_text.replace (' sold', '')
+        print(account_sold_text)
+        account_sold_followers = driver.find_element('css selector', '[data-testid = "followers__count"]')
+        account_sold_followers = account_sold_followers.text
+        if '.' in account_sold_followers:
+            try:
+                account_sold_followers = account_sold_followers.replace('.', '')
+                account_sold_followers = account_sold_followers.replace('K', '00')
+            except:
+                pass
+        else:
+            try:
+                account_sold_followers = account_sold_followers.replace('K', '000')
+            except:
+                pass
+        print(account_sold_followers)
+
+def sqlite_database_for_dp_verified():
+    combined = zip(total_ver_account_name, total_ver_account_link, total_ver_account_followers, total_ver_account_sold)
+    combined_list = list(combined)
+    
+    connection = sqlite3.connect('D:\\Selenium_python2\\Depop_database.db')
+    cursor = connection.cursor()
+    
+    command_create = """
+        CREATE TABLE IF NOT EXISTS dp_top_seller (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            dp_account_name TEXT,
+            dp_account_link TEXT,
+            dp_account_solds INT,
+            dp_account_followers INT
+        )
+    """
+    cursor.execute(command_create)
+    command_insert = """
+        INSERT OR IGNORE INTO dp_top_seller (
+            dp_account_name,
+            dp_account_link,
+            dp_account_solds,
+            dp_account_followers
+        ) VALUES (?, ?, ?, ?)
+    """
+    cursor.executemany(command_insert, combined_list)
+    connection.commit()
+    connection.close()
+
+
+start_up()
+sign_in(account_name)
+follow_list('thriftedgoodiez')
+finding_verified()
+finding_verified_info()
+sqlite_database_for_dp_verified()
+
+
+#next task needs to be to figure out the offerup poster, then figure out how to scrape info from ebay then sell literally everything i have in there.  My goal is to get 
+# rid of every possible thing i could.
+
+#make this automatic so that it does this, then calls the depop_unfollow, and does for a few different accounts ofc
+# create this so that it identifies total amount of followers you currently have then subtracts from 7500
+
+
