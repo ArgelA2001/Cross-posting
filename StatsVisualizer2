@@ -1,0 +1,893 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import calendar
+import sqlite3
+import mplcursors
+import seaborn as sns
+from matplotlib.colors import to_rgba
+import tkinter as tk
+from tkinter import scrolledtext
+from PIL import Image, ImageTk
+import requests
+from io import BytesIO
+from functools import partial
+import concurrent.futures
+import time
+import traceback
+import threading
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
+from sklearn.preprocessing import LabelEncoder
+
+
+#? One issue with this is how to identify the unique ids,
+#? -- title would work but issue is that titles may be different at some points, missing a word, title was cut off, etc
+#? -- by picture, find a software to identify the image by picutre, but wouldn't be as accurate as well, maybe
+#? can do some experimenting with this to figure out how to identify this
+#? 
+class StatsVisualizer:
+    """
+    turns statistics into visualizations, regardless of whether stats are for depop, grailed, ebay, etc
+    """
+    #! change dp_account_username to just the signin username, so that its general and dynamic if the name were to change
+    def __init__(self, database_path, depop_username):
+        self.root = tk.Tk()
+        self.fig = None
+        self.ax = None
+        self.scrollbar = None
+        self.text_area = None
+        self.annotation = None
+        self.selected_value = None
+        self.selected_program_value = None
+        self.dropdown_menu_one = None
+        self.dropdown_menu_two = None
+        self.label = None
+        self.label_two = None
+        self.barplot = None
+        self.show_tkinter = None
+        self.tkinter_shown = None
+        self.database_path = database_path
+        self.current_label = None
+        self.new_label = None
+        self.current_program_label = None
+        self.new_program_label = None
+        self.bars = None
+        self.database_in_use = None
+        self.database_we_are_using = None
+        self.conn = sqlite3.connect(self.database_path)
+        self.cursor = self.conn.cursor()
+        self.depop_username = depop_username        
+        self.dp_csv_solds_table = f'dp_csv_solds_{self.depop_username}'
+        self.dp_ui_table = f'dp_sold_{self.depop_username}'
+        self.db = pd.read_sql(f'SELECT * FROM  overall_solds_{self.depop_username}', con=self.conn)
+        self.db['date'] = pd.to_datetime(self.db['Date of sale'])
+        self.db['day'] = self.db['date'].dt.day
+        self.db['week'] = self.db['date'].dt.isocalendar().week
+        self.db['month'] = self.db['date'].dt.month
+        self.db['quarter'] = self.db['date'].dt.quarter
+        self.db['year'] = self.db['date'].dt.year
+        self.db['time_to_sale'] = pd.to_datetime(self.db['Date of sale']) - pd.to_datetime(self.db['Date of listing'])
+    
+    #!! this organizes our data from all platforms, 
+    #TODO so far only have depop and ebay but need to create data for all
+    def concat_depop_data(self):
+        """ 
+        Concats the two depop databases together
+        - One from csv
+        - One from UI Scraping
+        #! to get more info about 1 profiles sales
+        """
+        try:
+            self.cursor.execute(
+                f""" 
+                    DROP TABLE dp_overall_solds
+                """
+            )
+            self.conn.commit()
+        except:
+            print('NO TABLE TO REMOVE')
+         #!
+         #! 
+         #! STEP 1
+         #? Figure out the proper columns you will need for the universal, even if they both dont have it, you can enter an N/A value for the whole column depending on program, since this will help gather all information into one
+         #?column where i can then use a where clause to filter by program
+        self.cursor.execute(
+            f"""
+                CREATE TABLE dp_overall_solds_{self.depop_username} AS
+                SELECT {self.dp_csv_solds_table}.*, {self.dp_ui_table}.dp_condition AS Condition, {self.dp_ui_table}.dp_men_or_wmn AS Gender, {self.dp_ui_table}.dp_likes AS Likes, {self.dp_ui_table}.dp_gen_category AS General_Category, {self.dp_ui_table}.dp_category AS Category,  {self.dp_ui_table}.dp_color1 AS Color, {self.dp_ui_table}.dp_images AS Images, {self.dp_ui_table}.dp_image_len AS Images_Length, {self.dp_ui_table}.dp_url_list AS Item_URL
+                FROM {self.dp_csv_solds_table}
+                LEFT JOIN {self.dp_ui_table}
+                ON {self.dp_csv_solds_table}.Description = {self.dp_ui_table}.dp_title;
+            """
+        )
+
+    def concat_all_data(self):
+        """ 
+        Once we have depop data fully scraped, we then can use this to combine...
+        Concatted depop data 
+        ebay data 
+        
+        to get one general database
+        """
+        #! identify if concat database is available or not
+        try:
+            self.cursor.execute(
+                f""" 
+                    DROP TABLE overall_solds_{self.depop_username}
+                """
+            )
+        except Exception as e:
+            print(e)
+            print('NO TABLE TO REMOVE')
+        
+        #this concat table should be good now as long as the tables are all correct, but all values should be unionable
+        #! now need to figure out what to do next once i have this combined table of all my statistics
+        #TODO Create a graph for this?
+        #TODO create the dictionary for Category/ ebay_type
+        self.cursor.execute(
+            f"""
+                CREATE TABLE overall_solds_{self.depop_username} AS
+                SELECT "Date of sale", "Date of listing", Description, "Total after fees", Likes, Condition, Gender, Category, Brand, Color, Size, Images, Images_length, Item_URL, "Depop" AS Program FROM dp_overall_solds_{self.depop_username}
+                UNION
+                SELECT ebay_sale_date, ebay_start_date, ebay_title, ebay_price, "0" AS ebay_likes, ebay_condition, ebay_department, ebay_type, ebay_brand, ebay_color, ebay_size, ebay_images, ebay_images_len, ebay_item_link, 'Ebay' AS program FROM ebay_sold_{self.depop_username}
+            """
+        )
+        self.conn.commit()
+
+        #! if moves to except, than this signifies that this table needs to be concatted
+        #! from depop page, need
+        #! General_Category #? For general category, just creeate a dictionary for all types of clothing
+
+        #TODO ebay_type might needs a dictionary,
+        #TODO ebay_size needs work done on it to get all the sizes, size missing for some rows
+        #TODO Find sizes for hats, just create size list and check title to see if any word in title is in list
+        #TODO can maybe do the same thing for brand? already have something similar to that
+        #TODO Remove all text in the database that state **ANONYMIZED_... ***, since no information in that will be able to help me really
+        #? Actually find out why its anonimized, because the only thing anonymized is the description, name adn the title but i still get all the
+        #? Actually the only information i get from this is the category, the total, the size and the brand but thats still enough for me
+
+    #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    #! the methods we use to gather or transform information into something more organized for the program            
+    def month_name(self, time_num):
+        """
+        this is a function we can use to return the proper month in word form, for our use in visualizing
+        """
+        return calendar.month_name[time_num]
+    
+    def value_to_color(self, value, cmap='Greens', lower_bound=.4, upper_bound=1):
+        """ 
+        conoverts the color on the bar based on teh value that is being plotted
+        """
+        norm_value = value / max_value  # Normalize the value
+        adjusted_norm_value = lower_bound + (upper_bound - lower_bound) * norm_value
+        rgba_color = plt.get_cmap(cmap)(adjusted_norm_value)
+        return to_rgba(rgba_color)
+
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#! custome aggregates we have used for this
+    def price_from_average(self, x):
+        """ 
+        we calculate how far or close the price is from the average, the higher above average, the more we should rate this piece,
+        """
+        #! find the mean of total after fees, and just find out how much above or below the number is
+        mean_value = x.mean()
+    
+        # Calculate the differences from the mean without converting to integers
+        differences = np.abs(x - mean_value)
+        
+        return differences
+
+    def most_profit(self):
+        """ 
+        calculate the most profitable items, depending on just most profit in general, or most depending on the scale of what we bought the item for
+        """
+        #! for this I would need to create a column to find how much I payed for the item, where and how can I insert this?
+        #? Just estimate an average depending on the category?
+        """ 
+            T-shirt: 3
+            Pants: 6
+            Hats: 2
+            Shoes: 8
+            Jacket: 6
+        """ #!can do this for the most part, but still want an opportunity to add purchase cost personally and individually?
+        #? When creating the post, add a purchase cost slot to update into the listings category
+        """ 
+        which will then create a new excel spreadsheet then from there can concat this sheet to the program scraper sheet to get more information from it
+        """
+        
+        #! then just find the ratio of profit to item cost, or just how much profit, and maybe even include a function to take the time to sell into consideration
+        
+    def get_image(self, source, image):
+        """ 
+        gets image from either file or url and inserts image into text_file scroll bar we created
+        allowing us to see the image and see the description for it
+        """
+        if source == 'file':
+            img = Image.open(image)
+        elif source == 'url':
+            response = requests.get(image)
+            img = Image.open(BytesIO(response.content))
+        img = img.resize((70, 70), Image.ANTIALIAS)
+        return img
+
+    def display_image(self, text_area, image):
+        """ 
+        Obtain image info from get_image() method and then place the image into the text area.
+        """
+        image_tk = ImageTk.PhotoImage(image)
+        label = tk.Label(text_area.master, image=image_tk)
+        label.image = image_tk
+        text_area.image_create(tk.END, image=image_tk)
+        text_area.insert(tk.END, '\n\n')
+
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#! ways that we can create graphs for this project and by what style, depending on the type of graphs that is chosen
+    def graph_date_creator(self, chosen_time_slot, agg, descriptor, descriptor_value_to_filter):
+        """ 
+        #! this method will only be to sort where x values are descriptors
+        essentially is the the COUNT(*) 
+        only graphs based on date, so graphs all time date for the most part, or will break up to do within quarters or somethiing and years if i want to get fancy
+        """
+        column_title = f'year_{chosen_time_slot}'
+        x_label = f'Year and {chosen_time_slot.title()}s'
+        y_label = 'Total Sales Count'
+        
+        agg_for_title = 'Count' if agg == 'size' else agg
+
+        if descriptor_value_to_filter is not None:
+            item_title = f'Total {agg_for_title.title()} of {descriptor_value_to_filter} per {chosen_time_slot.title()}'
+        else:
+            item_title = f'Total {agg_for_title.title()} per {chosen_time_slot.title()}'
+
+        group_by_descriptors = ['year', chosen_time_slot]
+        
+        if chosen_time_slot == 'year':
+            group_by_descriptors = ['year']
+        pd.set_option('display.max_columns', None)
+        # sales_by_time_slot = self.db[self.db[descriptor] == descriptor_value_to_filter] #! this code we will work on later, in terms of creating it in the title too, this will just help us look at a specific element and analyze that one element alone
+        #! to track sales better, and more in depth
+        og_sales_by_time_slot = self.db
+        original_function_agg = f'sales_for_{agg}'
+        sales_agg = ['mean', 'sum', 'size', 'max']
+        for s, sale in enumerate(sales_agg):
+            if s == 0:
+                sales_by_time_slot = self.db.groupby(group_by_descriptors)['Total after fees'].agg(sale).round(2).reset_index(name=f'sales_for_{sale}')
+            else:
+                desired_sales = self.db.groupby(group_by_descriptors)['Total after fees'].agg(sale).round(2).reset_index(name=f'sales_for_{sale}')
+                sales_by_time_slot[f'sales_for_{sale}'] = desired_sales[f'sales_for_{sale}']
+
+        if chosen_time_slot == 'month': #! column title would be the dates that we organize for our x values
+            sales_by_time_slot[column_title] = sales_by_time_slot['year'].astype(str) + '-' + sales_by_time_slot[chosen_time_slot].astype(str)
+            sales_by_time_slot[column_title] = sales_by_time_slot[column_title].apply(lambda x: f"{calendar.month_name[int(x.split('-')[1])]} {x.split('-')[0]}")
+            og_sales_by_time_slot[column_title] = og_sales_by_time_slot['year'].astype(str) + '-' + og_sales_by_time_slot[chosen_time_slot].astype(str)
+            og_sales_by_time_slot[column_title] = og_sales_by_time_slot[column_title].apply(lambda x: f"{calendar.month_name[int(x.split('-')[1])]} {x.split('-')[0]}")
+        elif chosen_time_slot in ['day', 'quarter', 'week', 'year']:
+            sales_by_time_slot[column_title] = sales_by_time_slot['year'].astype(str) + '-' + sales_by_time_slot[chosen_time_slot].astype(str)
+            sales_by_time_slot[column_title] = sales_by_time_slot[column_title].apply(lambda x: f"{chosen_time_slot.title()} {x.split('-')[1]} of {x.split('-')[0]}")
+            og_sales_by_time_slot[column_title] = og_sales_by_time_slot['year'].astype(str) + '-' + og_sales_by_time_slot[chosen_time_slot].astype(str)
+            og_sales_by_time_slot[column_title] = og_sales_by_time_slot[column_title].apply(lambda x: f"{chosen_time_slot.title()} {x.split('-')[1]} of {x.split('-')[0]}")
+        self.graph_adjustors(x_label, y_label, item_title, sales_by_time_slot[column_title], sales_by_time_slot[original_function_agg], sales_by_time_slot, descriptor, 'date', og_sales_by_time_slot)
+
+    def graphing(self, chosen_time_slot, chosen_agg, descriptor, time_slot, year, group_by_date):
+        """ 
+        method we will use to find the information that we need to graph, 
+        #! working on making this dynamic to be able to just fully use arguments and whatnot
+        """
+        #TODO WHAT TO DO TO UPDATE THIS TO BE SIMLIAR WITH graph_date_creator
+        """ 
+        make date_dictionary
+        add aggregates to dictionary to put in hover
+        """
+        third_descriptor = 'Total after fees'
+        if group_by_date:
+            print('group by date')
+            descriptor_to_group_by = descriptor
+            date_descriptor = chosen_time_slot #! Have option for this to add year as well
+            date_descriptor = 'year', chosen_time_slot
+            if chosen_time_slot == 'year':
+                date_descriptor = 'year'
+            group_by_descriptors = [date_descriptor, descriptor_to_group_by]
+            group_by_descriptors = ['year', chosen_time_slot, descriptor_to_group_by]
+        else:
+            group_by_descriptors = descriptor
+
+        x_label = f'Year and {chosen_time_slot.title()}s'
+        y_label = 'Total Sales Count'
+        agg_for_title = 'Count' if chosen_agg == 'size' else chosen_agg
+        if descriptor == 'Total after fees':
+            descriptor_for_title = 'Price'
+        else:
+            descriptor_for_title = descriptor
+
+        if time_slot == 'all':
+            time_slot_var = ''
+        else:
+            time_slot_var = time_slot
+        if time_slot == 'all':
+            item_title = f'Total {agg_for_title.title()} by {descriptor_for_title}'
+        else:
+            if chosen_time_slot == 'week':
+                item_title = f'Total {agg_for_title.title()} by {descriptor_for_title} for Week {time_slot_var} {year}'
+            elif chosen_time_slot == 'month':
+                item_title = f'Total {agg_for_title.title()} by {descriptor_for_title} for {self.month_name(time_slot_var)} {year}'
+            elif chosen_time_slot == 'quarter':
+                item_title = f'Total {agg_for_title.title()} by {descriptor_for_title} for Quarter {time_slot_var} {year}'
+            elif chosen_time_slot == 'year':
+                item_title = f'Total {agg_for_title.title()} by {descriptor_for_title} for {year}'
+
+        # type_of_function = f'Sales Per {chosen_time_slot.title()} for {chosen_agg}'
+        type_of_function = f'sales_for_{chosen_agg}'
+        date_dictionary = {
+            'week': self.db['date'].dt.isocalendar().week,
+            'month': self.db['date'].dt.month,
+            'quarter': self.db['date'].dt.quarter,
+            'year': self.db['date'].dt.year
+        }
+        print(f' chosen agg {chosen_agg}')
+        print(f'chosen_time_slot: {chosen_time_slot}')
+        print(f'first descriptor {descriptor}')
+        if chosen_time_slot in date_dictionary:
+            if time_slot != 'all':
+                chosen_data = self.db[(date_dictionary[chosen_time_slot] == time_slot) & (self.db['date'].dt.year == year)].copy()
+            else:
+                chosen_data = self.db.copy()
+            print(chosen_data)
+            #! group_by_descriptor filters by year and chosen_time_slot as well, but not sure when exactly those will be needed? if needed at all?
+            #! just using descriptor solved the issue i had 
+            # chosen_sales = chosen_data.groupby(group_by_descriptors)[third_descriptor].agg(chosen_agg).round(0).reset_index(name=type_of_function).sort_values(by=type_of_function, ascending=False)
+            original_function_agg = f'sales_for_{chosen_agg}'            
+            # chosen_sales = chosen_data.groupby(descriptor)[third_descriptor].agg(chosen_agg).round(0).reset_index(name=type_of_function).sort_values(by=original_function_agg, ascending=False)
+            sales_agg = ['mean', 'sum', 'size', 'max']
+            chosen_sales = chosen_data.groupby(descriptor)[third_descriptor].agg(chosen_agg).round(2).reset_index(name=type_of_function)
+            for s, sale in enumerate(sales_agg):
+                print(f'sales_for_{sale}')
+                if chosen_agg != sale:
+                    desired_sales = chosen_data.groupby(descriptor)[third_descriptor].agg(sale).round(2).reset_index(name=f'sales_for_{sale}')
+                    chosen_sales[f'sales_for_{sale}'] = desired_sales[f'sales_for_{sale}']
+            chosen_sales = chosen_sales.sort_values(by=type_of_function, ascending=False)
+            pd.set_option('display.max_columns', None)
+            print(chosen_data)
+            print('chosen_sales')
+            print(chosen_sales)
+            print('chosen_sales[descriptor]')
+            print(chosen_sales[descriptor])
+            print('chosen_sales[type_of_function]')
+            print(chosen_sales[type_of_function])
+            # chosen_sales = chosen_data.groupby(descriptor)[third_descriptor].agg(self.price_from_average).round(0).reset_index(name=type_of_function).sort_values(by=type_of_function, ascending=False)
+    #    graph_adjustors(self, xlabel, ylabel, title, plot_chart, plot_aggregate, database_in_use, descriptor_used, type_of_graph, og_database_in_use=None, max_x_values=60):
+        self.graph_adjustors(x_label, y_label, item_title, chosen_sales[descriptor], chosen_sales[type_of_function], chosen_sales, descriptor, 'descriptor', chosen_data)
+
+    def average_time_to_sell(self, timeline, time_slot, descriptor):
+        """ 
+        calculates average time to sell something based on given descriptor(s)
+        """
+        x_label = 'Days to Sell'
+        y_label = 'Amount of things solds'
+        
+        date_dictionary = {
+            'week': self.db['date'].dt.isocalendar().week,
+            'month': self.db['date'].dt.month,
+            'quarter': self.db['date'].dt.quarter,
+            'year': self.db['date'].dt.year
+        }
+        
+        if timeline in date_dictionary:
+            quick_sale_data = self.db[date_dictionary[timeline] == time_slot]
+            average_time_of_sale = quick_sale_data.groupby([descriptor, timeline])['time_to_sale'].mean().reset_index()
+            average_time_of_sale = average_time_of_sale.sort_values(by=[timeline, 'time_to_sale'], ascending=False)
+            print(quick_sale_data)
+            print(quick_sale_data.columns)
+            print(average_time_of_sale)
+            sales_agg = ['mean', 'sum', 'size', 'max']
+            for s, sale in enumerate(sales_agg):
+                print(f'sales_for_{sale}')
+                desired_sales = quick_sale_data.groupby(descriptor)['Total after fees'].agg(sale).round(2).reset_index(name=f'sales_for_{sale}')
+                print(desired_sales)
+                average_time_of_sale[f'sales_for_{sale}'] = desired_sales[f'sales_for_{sale}']
+            print(average_time_of_sale)
+            # chosen_sales = chosen_sales.sort_values(by=[timeline, 'time_to_sale'], ascending=False)
+            if timeline == 'month':
+                timeline_text = self.month_name(time_slot)
+            else:
+                timeline_text = f'{timeline} {str(time_slot)}'
+
+            self.graph_adjustors(x_label, y_label, timeline_text, average_time_of_sale[descriptor], average_time_of_sale['time_to_sale'].dt.days, average_time_of_sale, descriptor, 'descriptor', quick_sale_data)
+
+    #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    #! figure out how to get the mean value sto go into the 
+    def quickest_sales(self, timeline, time_num, descriptor, specified_year, sold_time=30):
+        """ 
+        analyzes which sells the quickest, in less than 30 days, which brands, or whatever category, does the best
+        """
+        self.db['time_to_sale'] = pd.to_datetime(self.db['Date of sale']) - pd.to_datetime(self.db['Date of listing'])
+        x_label = 'Quickest solds'
+        y_label = 'Descriptors'
+        if timeline != 'all':
+            #? sold within time = self.database_in_use? 
+            
+            sold_within_time = self.db[(self.db['time_to_sale'] < pd.Timedelta(days=sold_time)) & (self.db[timeline] == time_num) & (self.db['year'] == specified_year) & (self.db[descriptor] is not None)]
+            if timeline == 'month':
+                timeline_text = f'Quickest Sales for {self.month_name(time_num)}'
+            else:
+                timeline_text = f'Quickest Sales for {timeline.capitalize()} {str(time_num)}'
+        elif timeline == 'all':
+            sold_within_time = self.db[self.db['time_to_sale'] < pd.Timedelta(days=sold_time) & (self.db[descriptor] is not None)]
+            timeline_text = 'Total'
+        items_sold_within_time = sold_within_time[descriptor].value_counts()
+        sales_agg = ['mean', 'sum', 'size', 'max']
+        for s, sale in enumerate(sales_agg):
+            print(f'sales_for_{sale}')
+            desired_sales = sold_within_time.groupby(descriptor)['Total after fees'].agg(sale).round(2).reset_index(name=f'sales_for_{sale}')
+            print(desired_sales[f'sales_for_{sale}'])
+            sold_within_time[f'sales_for_{sale}'] = desired_sales[f'sales_for_{sale}']
+        # items_sold_within_time['time_to_sale'] = items_sold_within_time['time_to_sale'].astype(str).replace('00:00:00', '', regex=False)
+        print('items_sold_within_time')
+        print('items_sold_within_time')
+        # print(items_sold_within_time.columns)
+        print(items_sold_within_time)
+        print(sold_within_time)
+
+        self.graph_adjustors(x_label, y_label, timeline_text, items_sold_within_time.index, items_sold_within_time.values, items_sold_within_time, descriptor, 'descriptor', sold_within_time)
+
+    def sklearn_model(self):
+        """  
+        Where we will create out dynamic machine learning model
+        #! if this turns out to be difficult, we will push this back, this isnt the priority, but it will definitely help out software
+        #! might be best to save this for later, once i have everything else taken care of, this will take a lot of work to get this right
+        """
+        #! still very much a work in progress and not a priority at the moment
+        df = pd.DataFrame({descriptor: items_sold_within_time.index, 'sales_quantity': items_sold_within_time.values})
+
+        # Use pd.get_dummies to one-hot encode the 'descriptor' column
+        label_encoder = LabelEncoder()
+        df[descriptor] = label_encoder.fit_transform(df[descriptor])
+
+        X = df.drop('sales_quantity', axis=1).values
+        y = df['sales_quantity'].values
+        print(X)
+        print(y)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+        
+        model = LinearRegression()
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+        print(y_pred)
+        mse = mean_squared_error(y_test, y_pred)
+        print(mse)
+        plt.scatter(X_test, y_test, color='black', label='Actual values')
+        plt.scatter(X_test, y_pred, color='blue', label='Predicted values')
+        plt.title('Actual vs Predicted values')
+        plt.xlabel('Features')
+        plt.ylabel('Sales Quantity')
+        plt.legend()
+        plt.show()
+        # X = 
+        # y = 
+        # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#! where we prepare the info of the text that we put into the scrollbar text area, which rows are entered in
+    def on_bar_click(self, event, descriptor_used, type_of_graph):
+        #! issue where i have to click twice to get the bar to show up??
+        #? figure out why for this
+        """ 
+        this is if we want to see the info based on a specific type of bar, we can click that bar
+        and all the rows in that bar will shop up in the scroll bar text area
+        """
+        if event.artist in self.bars:
+            index = self.bars.index(event.artist)
+            _, labels = plt.xticks()
+            bar_name = labels[index].get_text()
+            
+            self.iterate_through_graph_info(bar_name, descriptor_used, type_of_graph)
+            self.selected_program_value.set('All')
+            self.selected_value.set('Nearest Sold')
+            self.threading_information_method('Nearest Sold', 'Filter')
+            self.threading_information_method('All', 'Program')
+        else:
+            print('No bar clicked!')
+
+    def iterate_through_graph_info(self, descriptor_filter, type_of_graph, descriptor_name=None):
+        """ 
+        gathers data that is in the graph in a list form to see each one individually
+        it then uploads this into a tkinter window allowing us to see the exact post listed in that draft
+        #! what other stats would be useful to see in this?
+        #? how long took to sell
+        #? Profit made
+        #? 
+        """
+        #! need to figure out a way to display the image
+        if type_of_graph == 'date' or descriptor_name == 'date':
+            type_of_graph = 'year_month'
+        
+        try:
+            try:
+                self.text_area.delete(1.0, tk.END)
+            except:
+                pass
+
+            if not hasattr(self, 'scrollbar') or self.scrollbar is None:
+                self.scrollbar = tk.Scrollbar(self.root)
+                self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+                self.text_area = scrolledtext.ScrolledText(self.root, wrap=tk.WORD, width=220, height=60, yscrollcommand=self.scrollbar.set)
+                self.text_area.pack()
+                self.text_area.config(yscrollcommand=self.scrollbar.set)
+                self.scrollbar.config(command=self.text_area.yview)
+
+                self.create_dropdown_menu()
+                self.create_second_dropdown_menu()
+            print(descriptor_name, descriptor_filter, type_of_graph)
+            if descriptor_name is not None:
+                self.database_we_are_using = self.database_in_use[self.database_in_use[type_of_graph] == descriptor_filter] #name must be year month
+            else:
+                self.database_we_are_using = self.database_in_use
+                #filter must be whatever date it is
+        except Exception as e:
+            print(e)
+            # traceback.print_exc()             
+        
+        self.threading_information_method('Nearest Sold', 'Filter')
+
+    def create_dropdown_menu(self):
+        """  
+        this dropdown menu we use to add our filter, how we want to filter the data in textarea scrollbar
+        """
+        dropdown_window_one = tk.Toplevel(self.root)
+        dropdown_window_one.title("Dropdown Window")
+
+        self.selected_value = tk.StringVar()
+
+        options = ["Nearest Sold", "Farthest Sold", "Highest to Lowest Price", "Lowest to Highest Price", "Sold Quickest", "Sold Longest"]
+
+        dropdown_menu_one = tk.OptionMenu(dropdown_window_one, self.selected_value, *options)
+        dropdown_menu_one.pack(padx=10, pady=10)
+
+        self.selected_value.set(options[0])
+
+        self.label = tk.Label(dropdown_window_one, text="")
+        self.label.pack(pady=10)
+        self.update_label()
+
+    def create_second_dropdown_menu(self):
+        """ 
+        this second dropdown menu we use to by what program we want to filter out data in textarea scrollbar
+        """
+        dropdown_window_two = tk.Toplevel(self.root)
+        dropdown_window_two.title("Dropdown Window")
+
+        self.selected_program_value = tk.StringVar()
+
+        program_options = ['All', 'Depop', 'Ebay', 'Grailed', 'Facebook Marketplace', 'Offer Up'] #!ETC
+
+        dropdown_menu_two = tk.OptionMenu(dropdown_window_two, self.selected_program_value, *program_options)
+        dropdown_menu_two.pack(padx=10, pady=10)
+
+        print('program options 1')
+        self.selected_program_value.set(program_options[0])
+
+        self.label_two = tk.Label(dropdown_window_two, text="")
+        self.label_two.pack(pady=10)
+        self.update_program_label()
+
+    def update_label(self):
+        """ 
+        changes the text area based on the filter method in the dropdown that is selected        
+        """
+        selected_option = self.selected_value.get()
+        self.label.config(text="Selected Option: " + selected_option)
+        
+        # print('Selected Option: ' + selected_option)
+        self.current_label = selected_option
+        self.root.after(1000, self.update_label)
+        
+        if self.current_label != self.new_label and self.new_label is not None:
+            self.threading_information_method(selected_option, 'Filter')
+        self.current_label = selected_option
+        self.new_label = selected_option
+        
+    def update_program_label(self):
+        """ 
+        changes the text area based on the filter method in the dropdown that is selected        
+        """
+        selected_program_value = self.selected_program_value.get()
+        self.label_two.config(text="Selected Program Value: " + selected_program_value)
+        
+        # print('Selected Program Option: ' + selected_program_value)
+        self.current_program_label = selected_program_value
+        self.root.after(1000, self.update_program_label)
+        
+        if self.current_program_label != self.new_program_label and self.new_program_label is not None:
+            self.threading_information_method(selected_program_value, 'Program')
+        self.current_program_label = selected_program_value
+        self.new_program_label = selected_program_value
+        
+    def threading_information_filter_loop(self, total_row_text, threading_key, reverse_bool=False):
+        """ 
+        method we use to sort threading information to place in text area scrollbar
+        """
+        for text in sorted(total_row_text, key=threading_key, reverse=reverse_bool):
+            for i in range(1,14):
+                self.text_area.insert(tk.END, text[i])
+                self.text_area.insert(tk.END, '\n')
+    
+    def threading_information_program_loop(self, total_row_text, selected_program):    
+        """ 
+        just like threading_infromation_filter_loop method above but to filter by program, not the filter
+        """
+        for text in sorted(total_row_text):
+            if selected_program != 'All':
+                if selected_program in text[10]:
+                    for i in range(1,14):
+                        self.text_area.insert(tk.END, text[i])
+                        self.text_area.insert(tk.END, '\n')
+            else:
+                for i in range(1,14):
+                    self.text_area.insert(tk.END, text[i])
+                    self.text_area.insert(tk.END, '\n')
+
+    # def text_area_insert(self, text):
+    #     for i in range(1,14):
+    #         self.text_area.insert(tk.END, text[i])
+    #         self.text_area.insert(tk.END, '\n')
+        
+    def threading_information_method(self, sorting_method, update_label_method):
+        """ 
+        method used to speed up the process information method
+        """
+        #! figure out way to incoorporate database_we_are_using, currently malfunctioning and not displaying proper current values
+        try:
+            try:
+                self.text_area.delete(1.0, tk.END)
+            except:
+                pass
+            total_row_text = []
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                futures = [executor.submit(self.process_item_information, index, row, total_row_text) for index, row in self.database_we_are_using.iterrows()]
+                concurrent.futures.wait(futures)
+
+            if update_label_method == 'Filter':
+                if sorting_method == 'Nearest Sold':
+                    key_function = lambda x: x[0]
+                    reverse_bool = False
+                elif sorting_method == 'Farthest Sold':
+                    key_function = lambda x: x[0]
+                    reverse_bool = True
+                elif sorting_method == 'Highest to Lowest Price':
+                    key_function = lambda x: float(x[3].replace('Sold Price: ', ''))
+                    reverse_bool = False
+                elif sorting_method == 'Lowest to Highest Price':
+                    key_function = lambda x: float(x[3].replace('Sold Price: ', ''))
+                    reverse_bool = True
+                elif sorting_method == 'Sold Quickest':
+                    #! some dates are off so figure out why this is off by a bit?!?!?!
+                    #! maybe make if = 0 make it unkown and put it at the end?? maybe give it a day like 99999
+                    #! Also figure out why dates are +- 1
+                    key_function = lambda x: int(x[12].replace('Time to Sale: ', '').replace(" Days", '').strip()) if x[12].replace('Time to Sale: ', '').replace(" Days", '').strip().isdigit() else 99999
+                    reverse_bool = False
+                elif sorting_method == 'Sold Longest':
+                    key_function = lambda x: int(x[12].replace('Time to Sale: ', '').replace(" Days", '').strip()) if x[12].replace('Time to Sale: ', '').replace(" Days", '').strip().isdigit() else 99999
+                    reverse_bool = True
+                self.threading_information_filter_loop(total_row_text, key_function, reverse_bool)
+            elif update_label_method == 'Program':
+                if sorting_method in ['All', 'Depop', 'Ebay', 'Grailed', 'Facebook Marketplace', 'Offer Up']: #! maybe find some way to include other factors, like if they are only 1 other program, vs the whole package for all programs
+                    selected_program = sorting_method
+                self.threading_information_program_loop(total_row_text, selected_program)
+        except Exception as e:
+            print(e)
+            traceback.print_exc()
+
+    def process_item_information(self, index, row, total_row_text):
+        """ 
+        processes each row series to list as text in the tkinter window we just opened
+        """
+        # print(index)
+        try:
+            selected_columns = ['Description', 'Total after fees', 'Condition', 'Brand', 'Category', 'Color', 'Size', 'Likes', 'Program', "Date of sale", 'time_to_sale']
+            selected_values = [str(row[column]) for column in selected_columns]
+            des_value = selected_values[0]
+            price_value = selected_values[1]
+            cond_value = selected_values[2]
+            brand_value = selected_values[3]
+            category_value = selected_values[4]
+            color_value = selected_values[5]
+            size_value = selected_values[6]
+            likes_value = selected_values[7]
+            program_value = selected_values[8]
+            date_sale_value = selected_values[9]
+            time_sale_value = selected_values[10].replace('00:00:00', '').title()
+            columns_for_text = ['Title', 'Sold Price', 'Condition', 'Brand', 'Category', 'Color', 'Size', 'Likes', 'Program', "Date of sale", 'Time to Sale']
+            # try: #! TURN THIS ON
+            #     image_url = row['Images'].split('; ')[0]
+            #     if image_url:
+            #         image = self.get_image('url', image_url)
+            # except AttributeError:
+            #     image = self.get_image('file', r"D:\Selenium_python2\DefaultNoPictureItem.jpg")
+            
+            # row_text = ((index + 1), image, f"Row {index + 1}: {', '.join(selected_values)}\n\n")
+            
+            #TODO Can make this easier
+            row_text = (
+                (index + 1),
+                f"Row {index + 1}:",
+                f'{columns_for_text[0]}: {des_value}',
+                f'{columns_for_text[1]}: {price_value}',
+                f'{columns_for_text[2]}: {cond_value}',
+                f'{columns_for_text[3]}: {brand_value}',
+                f'{columns_for_text[4]}: {category_value}',
+                f'{columns_for_text[5]}: {color_value}',
+                f'{columns_for_text[6]}: {size_value}',
+                f'{columns_for_text[7]}: {likes_value}',
+                f'{columns_for_text[8]}: {program_value}',
+                f'{columns_for_text[9]}: {date_sale_value}',
+                f'{columns_for_text[10]}: {time_sale_value}',
+                '\n'
+            )
+            # row_text = ((index + 1), f"Row {index + 1}: {selected_values}\n\n")
+            total_row_text.append(row_text)
+        # except AttributeError:
+        #     pass
+        except Exception as e:
+            print(e)
+
+#!!! this is a way where we can see the aggregates of each bar, just by hovering over it no matter the x value
+    def on_hover(self, sel, database_in_use, descriptor_used, type_of_graph): #! sel refers to the information from the selection object
+        """ 
+        detects which object we are hovering over
+        """
+        xdata = sel.target[0] + 0.5
+        xticklabels = [label.get_text() for label in self.ax.get_xticklabels()]
+        bar_name = xticklabels[int(xdata)]
+        if type_of_graph == 'date':
+            descriptor_used = 'year_month'
+        print(bar_name)
+        print(bar_name)
+        print(descriptor_used)
+        print(descriptor_used)
+        filtered_data = database_in_use[database_in_use[descriptor_used] == bar_name]
+        print(filtered_data)
+        for _, row in filtered_data.iterrows():
+            desired_mean = row['sales_for_mean']
+            desired_sum = row['sales_for_sum']
+            desired_size = row['sales_for_size']
+            desired_max = row['sales_for_max']
+        #! need to add type of agg, or the y value and its agg that we use to filter
+        text = f"""
+            {bar_name}
+            Mean: {desired_mean}
+            Sum: {desired_sum}
+            Total Sold This Month: {desired_size}
+            Most Expensive Item Sold: {desired_max}
+        """
+        #! for most expensive item, maybe find a way to list that specific item?
+        sel.annotation.set_text(text)
+        sel.annotation.set_bbox(dict(boxstyle='round', fc='gray')) #TODO find a way to set horizontal alignment to left?? not an immediate issue at this moment
+
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    #! this is what we use to put all the graph information together and create our graphs using the information we have prepared above
+    def graph_adjustors(self, xlabel, ylabel, title, plot_chart, plot_aggregate, database_in_use, descriptor_used, type_of_graph, og_database_in_use=None, max_x_values=60):
+        """ 
+        this is the actual function of putting something into the graph, the information that goes into the plot
+        """ #! dont need type_of_graph anymore
+        global max_value
+        try:
+            plt.ion()
+            # self.fig = plt.figure(figsize=(18, 12))
+            self.fig = plt.figure(figsize=(9, 6))
+            self.ax = self.fig.add_subplot(111)
+            plt.xlabel(xlabel)
+            plt.ylabel(ylabel)
+            plt.title(title)
+            plt.grid(True)
+            plt.gca().spines['right'].set_visible(False)
+            plt.gca().spines['top'].set_visible(False)
+            # self.fig.set_facecolor('darkgray')
+            # plt.gca().set_facecolor('darkgray')
+            plt.subplots_adjust(bottom=0.3, right=0.95, left=0.05)
+
+            if not plot_chart.empty:
+                plot_chart_subset = plot_chart[:max_x_values]
+                plot_aggregate_subset = plot_aggregate[:max_x_values].astype(int)
+                max_value = max(plot_aggregate_subset)
+                colors = [self.value_to_color(value) for value in plot_aggregate_subset]
+                self.bars = plt.bar(plot_chart_subset, plot_aggregate_subset, label='Bar Chart', alpha=0.7, picker=5) #!currently scatter plot works with motion_hover, but i want it to work with a bar plot, so will need to adjust
+                plt.xticks(plot_chart_subset, plot_chart_subset.tolist(), rotation='vertical', fontsize=6)
+                sns.barplot(x=plot_chart_subset, y=plot_aggregate_subset, palette=colors, linewidth=2, edgecolor='gray')
+                for i, y in enumerate(plot_aggregate_subset):
+                    plt.text(i, y, str(y), ha='center', va='bottom', fontsize=8, fontweight='bold')
+            self.annotation = self.ax.annotate(
+                text=' ',
+                xy=(0,0),
+                bbox={'boxstyle': 'round', 'fc': 'gray'},
+                ha='left'
+                )
+            
+            if type_of_graph == 'date':
+                self.database_in_use = og_database_in_use
+                database_for_hover = database_in_use
+            else:
+                print('this type graph')
+                self.database_in_use = og_database_in_use
+                database_for_hover = database_in_use
+            print(database_for_hover)
+            print(database_in_use)
+            print(descriptor_used, type_of_graph)
+            print(descriptor_used, type_of_graph)
+            print(descriptor_used, type_of_graph)
+            self.fig.canvas.mpl_connect('pick_event', partial(self.on_bar_click, descriptor_used=descriptor_used, type_of_graph=type_of_graph))
+            mplcursors.cursor(hover=True). connect('add', partial(self.on_hover, database_in_use = database_for_hover, descriptor_used=descriptor_used, type_of_graph=type_of_graph)) #! must check if descriptor_used == date for graph, is so, change it to year_month
+
+            self.annotation.set_visible(False)
+            plt.tight_layout()
+            plt.show()
+            self.show_tkinter = True
+            self.root.geometry("800x400")
+            if self.show_tkinter and not getattr(self, 'tkinter_shown', False):
+                threading.Thread(target=self.iterate_through_graph_info, args=(None, type_of_graph)).start()
+                self.root.update_idletasks()
+                self.show_tkinter = False
+                self.tkinter_shown = True
+
+            self.root.mainloop()
+        except Exception as e:
+            print(e)
+            traceback.print_exc()
+
+DATABASE_PATH = r"D:\Selenium_python2\Depop_database.db"
+
+ACCOUNT_USERNAME = '_realvintage'
+stats_instance = StatsVisualizer(DATABASE_PATH, ACCOUNT_USERNAME)
+#! figure out what we neeed brand for
+""" 
+This code works great other than figuring out what we need brand for in terms of an argument
+"""
+
+#! have already been checked and work congruently with no bugs
+# stats_instance.graph_date_creator('month', 'size', 'Brand', None)
+# stats_instance.graphing('month', 'size', 'Brand', 3, 2022, True)
+# stats_instance.average_time_to_sell('month', 6, 'Brand')
+
+#! have not been checked and must be checked
+#! have not been checked and must be checked
+# stats_instance.graphing('month', 'size', 'Brand', 'all', 2022, True)
+stats_instance.quickest_sales('quarter', 2, 'Category', 2022)
+
+
+""" 
+- make universal sold to filter out all solds from active databases
+"""
+
+#! on bar click works but for some reason i have to wait a second to use it, so i need to figure that out
+#! maybe can even make a type of graph for graph date creator where it tracks the sale of one specific descriptor/column, like Nike, or Jackets?
+""" 
+Ive done everything I am planning on doing with this, the only thing i have left to do now is to make sure it all runs smoothly... 
+on_bar_click works with all graphs 
+text_area works for all graphs and all possible variations, whether its with using dropdown menu, etc
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+How would I use this/ Market this out?
+since my gui isnt ready, maybe i can offer to do visualizations for people, get their data, run it through my program, then after it is all completed, maybe create a mini gui program where they can run through these filters themselves so they can customize it to their chosing?
+just like a little page/app they can open where all of this will be at their fingertips whenever they choose to open it
+
+Step 1: Figure out my clientelle
+Create a program to get all the top sellers, or sellers with lots of sales, over 100 in depop to send a message to offering my service
+Create a good script, maybe reel them in with a question rather than just get straight into it, something like...
+"Hey, I love what's on your page and you seem like you've been doing great on *Said Program*.  Have you ever had your stats analyzed for you?"
+
+something like that, ofc build off that but that is a good basis for me, just something to reel them in, and not sound like a lousy salesman, but more liek someone that is offering them a cheap and affordable service they can utilize to maximize their saling potential
+
+figure out what to do with sales that are scraped from depop website, not scraped with excel.  WIth this then I will be able to have thousands of sales to refer back to, and even offer that as a service, create 2 different graphs, 
+one 1 more accurate information but less solds
+the other with a ton more solds, literally thousands, but much less accurate specific sales, but will still  be able to tell what is selling, category, title, color, etc, just not the price       
+"""
+
+#! for likes, replace nan w/ None
+#! create a function to find the profit made,
+""" 
+considering that to find the profit, we need to find the revenue, and at least for me is not applicable, so what we can do is fill in what we do know, this would have to be involving the data of the specific individual,
+get the average price of what he buys for depending on the item; shoes, shirt, jackets etc, then just get the average of that then place that as the revenue
+"""
+
+#! option to make it so that if i click the outer part of the bar, where there are no bars, 
+#! itll go back to default, or maybe just create a button to make it reset back to normal
