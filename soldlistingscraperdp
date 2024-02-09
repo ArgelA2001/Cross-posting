@@ -1,0 +1,383 @@
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import Select
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+import time
+import requests
+from bs4 import BeautifulSoup
+from selenium.common.exceptions import NoSuchElementException
+import codecs
+import re
+import json
+import sqlite3
+import emoji
+from PyQt5.QtWidgets import QApplication
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import TimeoutException
+import traceback
+import unicodedata
+# new accounts: help_a_pup_out_vintage, grung3g1rl, 864vintage, thredthrifts, rodeliojrr, officialkaiser, retroshyt
+# gibbocreps modernthreads; 6803. M= 600,  pqgoods, jessieq 20847 brothership pnwvintage lakethriftz thekindfind lufinds  lonewolfvintagellc scottsupply, everybodyhatesx
+#  
+# indiedreamthrift(girls)  viasoul  twinflames  redrailvintage   modernthreads  fewandfarvintage   fleurre  vintagevortex_  lonewolfvintagellc,,   , , , 615collection, _realvintage, lilsadpapi, sevindaysteals, yourgrandpasstyle,thriftedgoodiez, untruereligiontr  23rdandvintage, gibbocreps, dominickatencio
+
+#_realvintage, isellclothes2001
+account_name = '_realvintage'
+# account_name = 'isellclothes2001' 
+print(account_name)
+print(account_name)
+print(account_name)
+chrome_options = Options()
+# chrome_options.add_argument("--headless")  # Run in headless mode
+# chrome_options.add_argument("--disable-gpu")
+chrome_options.add_experimental_option("detach", True)
+driver = webdriver.Chrome("D:\\Selenium_python2\\chromedriver.exe", chrome_options=chrome_options)
+driver.get("https://www.depop.com/" + account_name + '/')
+time.sleep(2)
+wait = WebDriverWait(driver, 20)
+
+depop_title_list = []
+depop_price_list = []
+depop_likes_list = []
+depop_bag_list = []
+depop_url_list = []
+depop_seller_list = []
+depop_men_or_wmn_list = []
+depop_gen_category_list = []
+depop_sub_category_list = []
+depop_condition_list = []
+depop_images_list = []
+depop_image_len_list = []
+depop_color1_list = []
+depop_color2_list = []
+
+
+def start_up(email, pw):
+    """ 
+    this function we just use to sign into depop to begin our excel scraping journey
+    """
+    cookies_button = driver.find_element('css selector', '[data-testid="cookieBanner__acceptAllButton"]')
+    cookies_button.click()
+    
+    log_in = driver.find_element('css selector', '[data-testid="navigation__login"]')
+    driver.execute_script('arguments[0].click();', log_in)
+    
+    time.sleep(2)
+    username = WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[@id="username"]')))
+    username.send_keys(email)
+    
+    time.sleep(2)
+    password = driver.find_element('css selector', '[data-testid="password"]')
+    password.send_keys(pw)
+    
+    log_in_button = driver.find_element('css selector', '[data-testid="login__cta"]')
+    log_in_button.click()
+    
+    WebDriverWait(driver, 10).until(EC.presence_of_element_located(('css selector', '[data-testid="avatar"]')))
+    driver.execute_script('window.open("https://www.depop.com/sellinghub/sold-items/")')
+    driver.switch_to.window(driver.window_handles[-1])
+        
+def scroll_down_script():
+    """
+    This function will scroll down to the bottom of solds page to find users first known date of sale, 
+    so we can then use this date to start creating excel sheets of all the sales data accurately
+    """
+    WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "ImageStack-styles__ImageOverlay-")]')))
+    while True:
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        try:
+            WebDriverWait(driver, 1).until(EC.invisibility_of_element_located(('xpath', '//*[contains(@class, "LoadingBall__InnerSpinner")]')))
+            print('Loading ball disappeared.')
+            break
+        except TimeoutException:
+            pass
+
+def sold_post_scraper():
+    try:
+        print('starting sold post scraper')
+        WebDriverWait(driver, 20).until(EC.element_to_be_clickable(('css selector', '[alt="Product Image"]')))
+        all_post = driver.find_elements('css selector', '[alt="Product Image"]')
+        print(len(all_post))
+        for ip, ind_post in enumerate(all_post):
+            print(f' post number {ip}')
+            driver.execute_script("arguments[0].scrollIntoView(true)", ind_post)
+            driver.execute_script('arguments[0].click();', ind_post)
+            time.sleep(2)
+            WebDriverWait(driver, 20).until(EC.element_to_be_clickable(('xpath', '//*[contains(@class, "styles__ProductLink")]')))
+            post_for_link = driver.find_elements('xpath', '//*[contains(@class, "styles__ProductLink")]')
+            for ind_post in post_for_link:
+                driver.execute_script(f"window.open('{ind_post.get_attribute('href')}');")
+                driver.switch_to.window(driver.window_handles[-1])
+                title_parsing()
+                driver.close()
+                time.sleep(1)
+                driver.switch_to.window(driver.window_handles[-1])
+    except Exception as e:
+        traceback.print_exc()
+        print('Failed to load, or I purposely closed it, Uploading the data')
+        print(e)
+        sqlite_database_for_depop(account_name)
+
+def hashtag_parser(word):
+    """
+    takes the title and separates it based on whatever comes first, ending statement or #, to ensure
+    that our title is only filled with important text that we need to see
+    """
+    separators = r'PLEASE READ CAREFULLY!!|#' #! issue with replace?
+    title_of_item = re.split(separators, word)[0].strip().replace('\s+', ' ', regex=True).replace(',', '').encode('ascii', 'ignore').decode('unicode_escape')
+    print(title_of_item)
+    depop_title_list.append(title_of_item)
+
+def title_parsing():
+    print('start title parsing')
+    try:
+        WebDriverWait(driver, 5).until(EC.presence_of_element_located(('css selector', "[data-testid='meta-schema__json-ld']")))
+        script_tag = driver.find_element('css selector', "[data-testid='meta-schema__json-ld']")
+        print(script_tag.text)
+        script_content = script_tag.get_attribute("innerHTML")
+        data = script_content.encode('ascii', 'ignore').decode('unicode_escape')
+        data = json.loads(script_content)
+
+        #price
+        price = data['offers']['price']
+        price = float(price)
+        if price >= 99999:
+            print('Meet the Seller')
+            driver.close()
+            driver.switch_to.window(driver.window_handles[0])
+            print('seller post')
+            time.sleep(2)
+            return
+        else:
+            depop_price_list.append(price)
+
+            #url
+            url_string = data['offers']['url']
+            depop_url_list.append(str(url_string))
+
+            # Extract the name category
+            item_title = data["description"]
+            hashtag_parser(item_title)
+
+            # seller account
+            depop_seller_list.append(account_name)
+
+            #images
+            images = data['image']
+            depop_images_list.append(images)
+            depop_image_len_list.append(int(len(images)))
+
+            #condition
+            try:
+                condition_list = ['Brand new', 'Like new', 'Used - Excellent', 'Used - Good', 'Used - Fair']
+                condition = driver.find_elements('xpath', "//*[contains(@class, 'ProductAttributes-styles__Attribute-sc')]")
+                if len(condition) == 0:
+                    condition_text = driver.find_element('css selector', '[data-testid="product__condition"]').text
+                else:
+                    for cond in condition:
+                        if cond.text in condition_list:
+                            condition_text = cond.text
+                            break
+                depop_condition_list.append(condition_text)
+            except:
+                print('ERROR CONDITION')
+                depop_condition_list.append(' ')
+
+            try:
+                colors = driver.find_elements('xpath', '//*[contains(@data-testid, "colourcircle")]')
+                if len(colors) == 0:
+                    colors = driver.find_element('css selector', '[data-testid="product__colour"]')
+                    colors = colors.text.split(', ')
+                    color1 = colors[0]
+                    color2 = colors[1] if len(colors) > 1 else ''
+                else:
+                    color1 = colors[0].get_attribute('id')
+                    color2 = colors[1].get_attribute('id') if len(colors) > 1 else ''
+                depop_color1_list.append(color1.title())
+                depop_color2_list.append(color2.title())
+
+            except NoSuchElementException:
+                depop_color1_list.append('')
+                depop_color2_list.append('')
+
+            gender_categories = ['Menswear', 'Womenswear', "Kids"]
+            category = driver.find_elements('xpath', '//*[contains(@class, "BreadcrumbLink")]')
+            try:
+                if category[3].text in gender_categories:
+                    depop_men_or_wmn_list.append(category[3].text)
+                    index = 3
+
+                elif category[1].text in gender_categories:
+                    depop_men_or_wmn_list.append(category[1].text)
+                    index = 1
+                
+                else:
+                    depop_men_or_wmn_list.append('')
+            except:
+                depop_men_or_wmn_list.append('')
+
+            #general category
+            try:
+                gen_category = category[index + 1].text
+                depop_gen_category_list.append(gen_category)
+            except:
+                depop_gen_category_list.append(' ')
+
+            try:
+                sub_category = category[index + 2].text
+                depop_sub_category_list.append(sub_category)
+            except:
+                depop_sub_category_list.append(' ')
+
+            all_text = driver.find_element('xpath', "/html/body").text
+
+            #total in bag
+            bag_match = re.search(r'\d{1,3}$', all_text)
+            if bag_match:
+                number = int(bag_match.group())
+                depop_bag_list.append(number)
+            else:
+                depop_bag_list.append(0)
+
+            #total likes
+            try:
+                like_count = driver.find_elements('css selector', '[data-testid="like-count"]')
+                depop_likes_list.append(like_count[0].text.replace(' likes', ''))
+            except IndexError:
+                depop_likes_list.append('0')
+            print('end title parsing')
+
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located(('css selector', '[data-testid="invalidUrlError__message"]')))
+        print('error found | NO LINK AVAILABLE')
+
+
+def checking_all_match():
+    """
+    checks if all lists are of the same length, to ensure accurate data set is appended
+    """
+    lists_to_check = [
+        depop_title_list,
+        depop_price_list,
+        depop_likes_list,
+        depop_bag_list,
+        depop_url_list,
+        depop_seller_list,
+        depop_men_or_wmn_list,
+        depop_gen_category_list,
+        depop_sub_category_list,
+        depop_condition_list,
+        depop_images_list,
+        depop_image_len_list,
+        depop_color1_list,
+        depop_color2_list
+    ]
+
+    if all(len(lst) == len(depop_men_or_wmn_list) and len(lst) > 0 for lst in lists_to_check):
+        print('This is all good')
+        print(len(depop_title_list))
+        print('this the max count')
+    else:
+        print('Fix this')
+        for lists in lists_to_check:
+            print(lists)
+            # print('depop total titles ' + str(len(depop_title_list)))
+            # print('depop price list ' + str(len(depop_price_list)))
+            # print('depop likes list ' + str(len(depop_likes_list)))
+            # print('depop bag list ' + str(len(depop_bag_list)))
+            # print('depop url list'+ str(len(depop_url_list)))
+            # print('depop men or women ' + str(len(depop_men_or_wmn_list)))
+            # print('depop gen category list ' + str(len(depop_gen_category_list)))
+            # print('depop sub category_list ' + str(len(depop_sub_category_list)))
+            # print('depop_condition_list ' + str(len(depop_condition_list)))
+            # print('depop image_list ' + str(len(depop_images_list)))
+            # print('depop image len_lists ' + str(len(depop_image_len_list)))
+            # print('depop color1 list ' + str(len(depop_color1_list)))
+            # print('depop color2 list ' + str(len(depop_color2_list)))
+            
+        
+
+def sqlite_database_for_depop(acc_name):
+    """
+    uses the data set we just created above and install this into a sql database
+    """
+    combined = zip(depop_title_list, depop_price_list, depop_likes_list, depop_bag_list, depop_url_list, depop_seller_list, depop_men_or_wmn_list, depop_gen_category_list, depop_sub_category_list, depop_condition_list, ['; '.join(x) for x in depop_images_list], depop_image_len_list, depop_color1_list, depop_color2_list)
+    combined_list = list(combined)
+    print(combined_list)
+    connection = sqlite3.connect('D:\\Selenium_python2\\Depop_database.db')
+    cursor = connection.cursor()
+
+    table_name = f'dp_sold_{acc_name}'
+  
+    # Create a new table with an auto-incrementing primary key
+    command_create = f"""
+        CREATE TABLE IF NOT EXISTS {table_name} (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            dp_title TEXT UNIQUE,
+            dp_price INT,
+            dp_likes INT,
+            dp_bag INT,
+            dp_url_list TEXT,
+            dp_seller TEXT,
+            dp_men_or_wmn TEXT,
+            dp_gen_category TEXT,
+            dp_category TEXT,
+            dp_condition TEXT,
+            dp_images TEXT,
+            dp_image_len INT,
+            dp_color1 TEXT,
+            dp_color2 TEXT DEFAULT ''
+        )
+    """
+    cursor.execute(command_create)
+    
+    # Insert data into the new table
+    command_insert = f"""
+        INSERT OR IGNORE INTO {table_name} (
+            dp_title,
+            dp_price,
+            dp_likes,
+            dp_bag,
+            dp_url_list,
+            dp_seller,
+            dp_men_or_wmn,
+            dp_gen_category,
+            dp_category,
+            dp_condition,
+            dp_images,
+            dp_image_len,
+            dp_color1,
+            dp_color2
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """
+    cursor.executemany(command_insert, combined_list)
+    
+    connection.commit()
+    connection.close()
+
+start_up('argelarroyo2001@gmail.com', 'Pineappleguy305')
+scroll_down_script()
+sold_post_scraper()
+checking_all_match()
+sqlite_database_for_depop(account_name)
+
+#make a count
+#options for this
+# can delete the whole table and create a new one from scratch?
+# --- this might take much longer for the overall process since would have to scan and do repetitive stuff over and over again
+# ##drop the table and create a new one
+
+
+#DO THIS ONE DO THIS ONE
+# or since solds will be in order can stop scanning once i get to a title that is already in my database?
+# --- will need to figure this out but will save a lot more time
+# ## compare the current title with ones already in and use a command like SELECT * FROM dp_personal_sold WHERE TITLE = "", and if something pops up, stop the code
+
+# the process for this would be extract the very last title from this seller sold list, identifying to dp_seller_list and get last one, then for
+# every title you extract, make sure it is not the individual one you extracted and if it is, then stop the program and continue to sqlite_database_for_depop()
