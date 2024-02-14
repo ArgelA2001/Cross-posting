@@ -1,0 +1,45 @@
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
+import time
+
+def dp_start_up(driver, email, pw):
+    """ 
+    this function we just use to sign into depop to begin our excel scraping journey
+    """
+    cookies_button = WebDriverWait(driver, 20).until(EC.element_to_be_clickable(('css selector', '[data-testid="cookieBanner__acceptAllButton"]')))
+    cookies_button.click()
+    time.sleep(2)
+    driver.find_elements('css selector', '[data-testid="navigation__login"]')[-1].click()
+    time.sleep(2)
+    username = WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[@id="username"]')))
+    username.send_keys(email)
+    time.sleep(2)
+    password = driver.find_element('css selector', '[data-testid="password"]')
+    password.send_keys(pw)
+    log_in_button = driver.find_element('css selector', '[data-testid="login__cta"]')
+    log_in_button.click()
+
+def scroll_down_script(driver, selling_sold_or_not):
+    """
+    This function will scroll down to the bottom of solds page to find users first known date of sale, 
+    so we can then use this date to start creating excel sheets of all the sales data accurately
+    """
+    if selling_sold_or_not in ['Selling', 'Sold']: # only one of these two
+        while True:
+            active_filter = WebDriverWait(driver, 10).until(EC.element_to_be_clickable(('id', f'{selling_sold_or_not.lower()}-button')))
+            active_filter.click()
+            time.sleep(1)
+            current_selling_link = driver.find_element('xpath', '//*[contains(@class, "ShopNavigation-styles__ActiveTab")]')
+            if current_selling_link.text == selling_sold_or_not:
+                break
+
+    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+    time.sleep(1)
+    while True:
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        try:
+            WebDriverWait(driver, 2).until(EC.invisibility_of_element_located(('xpath', '//*[contains(@class, "LoadingBall__InnerSpinner")]')))
+            break
+        except TimeoutException:
+            pass
