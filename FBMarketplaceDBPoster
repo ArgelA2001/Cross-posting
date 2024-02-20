@@ -1,0 +1,56 @@
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.common.exceptions import NoSuchElementException
+import time
+import datetime
+import os
+import requests
+import sqlite3
+import math
+import traceback
+
+conn = sqlite3.connect(r"D:\Selenium_python2\Depop_database.db")
+cursor = conn.cursor()
+chrome_options = Options()
+chrome_options.add_experimental_option("detach", True)
+driver = webdriver.Chrome("D:\\Selenium_python2\\chromedriver.exe", chrome_options=chrome_options)
+driver.get("https://www.facebook.com/marketplace/?ref=bookmark")
+
+log_in_button = WebDriverWait(driver, 10).until(EC.presence_of_element_located(('css selector', '[aria-label="Log In"]')))
+driver.execute_script('arguments[0].click()', log_in_button) 
+
+username_entry = WebDriverWait(driver, 10).until(EC.presence_of_element_located(('css selector', '[placeholder="Email or phone number"]')))
+username_entry.send_keys('2094471414')
+
+password_entry = WebDriverWait(driver, 10).until(EC.presence_of_element_located(('css selector', '[placeholder="Password"]')))
+password_entry.send_keys('Pineappleguy305')
+
+log_in_button_entry = driver.find_element('css selector', '[id="loginbutton"]')
+log_in_button_entry.click()
+
+time.sleep(5)
+driver.get('https://www.facebook.com/marketplace/create/item')
+
+#!description max 100 characters
+# title_entry = driver.find_element('xpath', "//*[text()='Title']")
+# place_to_enter_title = title_entry.find_element('css selector', '[dir="ltr"]')
+# place_to_enter_title = title_entry.find_element('xpath', './/*[@class="x1jchvi3 x1fcty0u x132q4wb x193iq5w x1al4vs7 xi81zsa xmper1u x1lliihq x1923su1 x6ikm8r x10wlt62 x47corl x10l6tqk x16q8cke xlyipyv xoyzfg9 x1k90msu x11xpdln x1qfuztq xuxw1ft"]')
+# print(len(place_to_enter_title))
+descripton_enter = driver.find_elements('css selector', '[dir="ltr"]')
+
+#enters title
+descripton_enter[2].send_keys('enter the title')
+
+#enters price
+descripton_enter[3].send_keys('50')
+
+#enters category
+descripton_enter[4].send_keys('Jacket')
+category_findings = driver.find_elements('xpath', '//*[contains(@class, "x193iq5w xeuugli x13faqbe x1vvkbs x1xmvt09 x1lliihq x1s928wv xhkezso x1gmr53x x1cpjm7i x1fgarty x1943h6x xudqn12 x3x7a5m x6prxxf xvq8zen x1s688f xzsf02u x1yc453h")]')
+for cat_text in category_findings:
+    print(cat_text.text)
+driver.execute_script('argumetns[0].click()', category_findings[1])
