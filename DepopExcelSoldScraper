@@ -1,0 +1,376 @@
+import os
+import csv
+import time
+import sqlite3
+from datetime import datetime
+import re
+import sqlite3
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+from tqdm import tqdm
+
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import TimeoutException
+from DPFunctions import *
+
+sqlite_database = r'D:\\Selenium_python2\\Depop_database.db'
+chrome_options = Options()
+chrome_options.add_experimental_option("detach", True)
+driver = webdriver.Chrome("D:\\Selenium_python2\\chromedriver.exe", chrome_options=chrome_options)
+#this extracts the very last date then gives us the information we need to extract the newest sold information
+account_name = '_realvintage'
+
+# def scroll_down_script():
+#     """
+#     This function will scroll down to the bottom of solds page to find users first known date of sale, so we can then use this date to
+#     start creating excel sheets of all the sales data accurately
+#     """
+#     WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "ImageStack-styles__ImageOverlay-")]')))
+#     while True:
+#         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+#         try:
+#             WebDriverWait(driver, 1).until(EC.invisibility_of_element_located(('xpath', '//*[contains(@class, "LoadingBall__InnerSpinner")]')))
+#             print('Loading ball disappeared.')
+#             last_sold_date = driver.find_elements('css selector', '[data-testid="receipt__sold_on"]')
+#             last_sold_date = last_sold_date[-1].text[:10]
+#             print(f'Finished with script {last_sold_date}')
+#             return last_sold_date
+#         except TimeoutException:
+#             pass
+
+# def extracting_the_last_date():
+#     """
+#     this code extracts the last date of the slide and we then use this date to find out which dates to extract into a spreadsheet
+    # we only use this if we dont have any previous database for this to look for, so works to create database for the very first time
+#     """
+#     yes_has_database = False #! By default this should be false, unless you have already done this script to gather your spreadsheets from depop
+#     if yes_has_database:
+#         extracting_last_date = cursor.execute(f'SELECT EndDate FROM dp_csv_solds_{account_name} ORDER BY strftime("%Y-%m-%d", EndDate);').fetchall()
+#         extracting_last_date = extracting_last_date[-1][0]
+#         month, day, year = extracting_last_date.split('/')
+#         if len(month) == 1:
+#             month = f'0{month}'
+#             print(month)
+#         if len(day) == 1:
+#             day = f'0{day}'
+#         extracting_last_date = f'{month}/{day}/{year}'
+#         print(extracting_last_date)
+#     else:
+#         scroll_down_script()
+#     #     extracting_last_date = True #!true signifying that we have to go in and search for the first sold date so we can make a a spreadsheet for user
+#     # return extracting_last_date
+
+# def extracting_depop_excel_sheets():
+#     """
+#     this code allows us to export all the sales data from depop into an excel sheet
+#     """
+#     end_of_data = False
+#     #? if no sales downloaded already, which will most likely be the case, how would I find out the date of the first sale?
+#     #last known date we will get from extracging_the_last_date() but for testing purposes we will use True
+#     last_known_date = True
+#     if last_known_date:
+#         print(' GOING INTO LAST KNOWN DATE')
+#         driver.execute_script('window.open("https://www.depop.com/sellinghub/sold-items/")')
+#         driver.switch_to.window(driver.window_handles[-1])
+#         last_known_date = scroll_down_script()
+#         driver.close()
+#         driver.switch_to.window(driver.window_handles[-1])
+
+#     WebDriverWait(driver, 10).until(EC.presence_of_element_located(('css selector', '[aria-controls="download-modal"]')))
+#     download_sales_button = driver.find_element('css selector', '[aria-controls="download-modal"]')
+#     download_sales_button.click()
+#     WebDriverWait(driver, 10).until(EC.presence_of_element_located(('id', 'modal__title'))) #! Not sure if needed
+
+#     start_date_entry = driver.find_element('id', 'salesDownloadModal__start')
+#     start_date_entry.click()
+#     time.sleep(.5)
+#     start_date_entry.send_keys(last_known_date)
+#     start_date_entry.send_keys(Keys.ENTER)
+
+#     while True:
+#         end_date_entry = driver.find_element('id', 'salesDownloadModal__end')
+#         end_date_entry.click()
+#         time.sleep(.5)
+#         for _ in range(3):
+#             try:
+#                 next_month_arrow = driver.find_element('xpath', '//*[contains(@class, "react-datepicker__navigation react-datepicker__navigation--next")]')
+#                 next_month_arrow.click()
+#             except NoSuchElementException:
+#                 end_of_data = True
+#         choosing_latest_end_day = driver.find_elements('xpath', '//*[contains(@aria-label, "Choose")]')
+#         choosing_latest_end_day[-1].click()
+
+#         sales_download_button = driver.find_element('xpath', '//*[contains(@class, "DownloadButton")]')
+#         sales_download_button.click()
+#         if end_of_data:
+#             break
+        
+#         WebDriverWait(driver, 15).until(EC.invisibility_of_element_located(('css selector', '[data-testid="download__cta--loading"]')))
+#         start_date_entry = driver.find_element('id', 'salesDownloadModal__start')
+#         start_date_entry.click()
+#         time.sleep(.5)
+#         for _ in range(3):
+#             next_month_arrow = driver.find_element('xpath', '//*[contains(@class, "react-datepicker__navigation react-datepicker__navigation--next")]')
+#             next_month_arrow.click()
+#         choosing_red_date = driver.find_element('xpath', '//*[contains(@class, "keyboard-selected")]')
+#         choosing_red_date.click()
+#         time.sleep(.5)
+
+class DataPreparer:
+    """
+    this class will allow us to prepare data from depop to be entered into our visualization program
+    """
+    account_username = '_realvintage' #! can scrape the dp name from start_up, and the username from sql log in data
+
+    def __init__(self, database_path, account_username):
+        self.df = None
+        self.database_path = database_path
+        self.conn = sqlite3.connect(self.database_path)
+        self.cursor = self.conn.cursor()
+        # self.db = pd.read_sql(self.database_path, con=self.conn)
+        self.chrome_options = Options()
+        self.chrome_options.add_experimental_option("detach", True)
+        self.account_username = account_username
+        self.driver = webdriver.Chrome("D:\\Selenium_python2\\chromedriver.exe", chrome_options=chrome_options)
+
+    def navigate_to_depop(self):
+        self.driver.get('https://www.depop.com/sellinghub/stats/m')
+
+    def load_data(self):
+        """
+        this loads the spreadsheets and concats this into one file
+        """
+        matching_files = []
+        #! this function loads the data
+        # ten_minutes_ago = time.time() - 10 * 60  
+        # available_drives = [d.mountpoint for d in psutil.disk_partitions()]
+        # # Walk through each drive and its subdirectories
+        # for drive in available_drives:
+        #     print(drive)
+        #     for root, _, files in os.walk(drive):
+        #         for filename in files:
+        #             if filename.endswith(".csv") and 'Recycle' not in filename and 'Depop Sales' in filename:
+        #                 file_path = os.path.join(root, filename)
+        #                 file_mtime = os.path.getmtime(file_path)
+
+        #                 if file_mtime >= ten_minutes_ago:
+        #                     matching_files.append(file_path)
+        #                     print(file_path)
+        
+        #! testing files
+        # matching_files = [
+        #     r'C:\Users\Argel Arroyo\Downloads\Depop Sales 01_06_2022 - 04_05_2022.csv',
+        #     r'C:\Users\Argel Arroyo\Downloads\Depop Sales 01_06_2023 - 04_05_2023.csv',
+        #     r'C:\Users\Argel Arroyo\Downloads\Depop Sales 04_06_2022 - 07_05_2022.csv',
+        #     r'C:\Users\Argel Arroyo\Downloads\Depop Sales 04_06_2023 - 07_05_2023.csv',
+        #     r'C:\Users\Argel Arroyo\Downloads\Depop Sales 07_06_2021 - 10_05_2021.csv',
+        #     r'C:\Users\Argel Arroyo\Downloads\Depop Sales 07_06_2022 - 10_05_2022.csv',
+        #     r'C:\Users\Argel Arroyo\Downloads\Depop Sales 07_06_2023 - 10_05_2023.csv',
+        #     r'C:\Users\Argel Arroyo\Downloads\Depop Sales 10_06_2021 - 01_05_2022.csv',
+        #     r'C:\Users\Argel Arroyo\Downloads\Depop Sales 10_06_2022 - 01_05_2023.csv',
+        #     r'C:\Users\Argel Arroyo\Downloads\Depop Sales 10_06_2023 - 11_08_2023.csv'
+        # ]
+        #! only run these if there is no database foudn for this, meaning we willl have to rerun this
+        # if no last date:
+        #     scroll_down_script()
+        #     last_depop_date = extracting_the_last_date()
+        # else:
+        #     last_depop_date = #! whatever the last depop date is, using a function
+        # extracting_depop_excel_sheets()
+        
+        #!with the csv files we just created above, this will edit the information in the files to prepare it for what we need to do
+        # dates = [datetime.strptime(re.search(r'\d{2}_\d{2}_\d{4}', file).group(0), "%m_%d_%Y") for file in matching_files]
+        # sorted_files = [x for _, x in sorted(zip(dates, matching_files))]
+        # df_read = [pd.read_csv(file) for file in sorted_files]
+        # df = pd.concat(df_read)
+        # df['Date of Sale'] = df['Date of Sale'].apply(lambda x: datetime.strptime(x, '%m/%d/%Y').strftime('%Y-%m-%d'))
+        # df = df[df['Refunded to buyer amount'].isna()].reset_index()
+        # removing_columns = [
+        #     'Time of sale', 
+        #     'USPS Cost',
+        #     'Payment type', 
+        #     'Address Line 1', 
+        #     'Address Line 2',
+        #     'Post Code', 
+        #     'Bundle',
+        #     'Country', 
+        #     'City',
+        #     'State',
+        #     'US Sales tax', 
+        #     'Fees refunded to seller',
+        #     'Refunded to buyer amount'
+        #     ]
+
+        # #TODO Condition, Color, Department
+        # df = df.drop(columns=removing_columns)
+        # pd.set_option('display.max_rows', None)  #! uncomment this back up
+        
+        
+        df['Depop Payments fee'] = df['Depop Payments fee'].replace('="-"', '0')
+        df['Boosting fee'] = df['Boosting fee'].replace('="-"', '0').replace('$-', '0')
+        df['Description'] = df['Description'].str.encode('ascii', 'ignore').str.decode('ascii').str.split(r'#|PLEASE', maxsplit=1).str[0].str.strip()
+        self.df = df
+
+    def identifying_bundles(self):
+        """
+        this code will turn bundles into single valued items, meaning that it will breakdown the bundle price into the normal price while taking in the average of each shipping price for each item 
+        """
+        result_of_blanks = self.df[self.df['Bundle']== 'Yes']
+        IDs = []
+
+        for idx in result_of_blanks.index:
+            IDs.append(idx)
+        return IDs
+
+    def grouping_numbers_together(self):
+        """
+        this will group all the bundles together by searching for any numbers which are adjacent to each other, then creating a nested list
+        """
+        id_list = self.identifying_bundles()
+        adjacent_groups = []
+        current_group = [id_list[0]]
+        for i in range(1, len(id_list)):
+            new_group = False
+            if id_list[i] - id_list[i - 1] == 1:
+                if str(self.df.loc[id_list[i], 'Buyer']) == str(self.df.loc[id_list[i-1], 'Buyer']):
+                    current_group.append(id_list[i])
+                else:
+                    new_group = True
+            else:
+                new_group = True
+                
+            if new_group:
+                adjacent_groups.append(current_group)
+                current_group = [id_list[i]]
+
+        adjacent_groups.append(current_group)
+        return adjacent_groups
+
+    def bundle_shipping_average(self):
+        """
+        this calculates average shipping for each item in bundle &
+        inserts that item price for the bundle for each item
+        """
+        adjacent_groups = self.grouping_numbers_together()
+        for groups in adjacent_groups:
+            total_amt_in_bundle = len(groups)
+            buyer_shipping_cost = float(self.df.loc[groups[0], 'Buyer shipping cost'].replace('$', ''))
+            payment_fee_cost = float(self.df.loc[groups[0], 'Depop Payments fee'].replace('$', ''))
+            if buyer_shipping_cost == 0:
+                shipping_each_item_avg = 0
+            else:
+                shipping_each_item_avg = round(buyer_shipping_cost / total_amt_in_bundle, 2)
+            
+            if payment_fee_cost == 0:
+                payment_fee_avg = 0
+            else:
+                payment_fee_avg = round(payment_fee_cost / total_amt_in_bundle, 2)
+            for itm in groups:
+                new_total = round(float(self.df.loc[itm, 'Item price'].replace('$', '')) + float(shipping_each_item_avg), 2)
+                dp_payment_fee = float(payment_fee_avg)
+                self.df.loc[itm, ['Buyer shipping cost', 'Total', 'Depop Payments fee']] = [shipping_each_item_avg, new_total, dp_payment_fee]
+                dp_fees = self.df.loc[itm, 'Depop fee'].replace('$', '')
+                boosting_fee = self.df.loc[itm, 'Boosting fee'].replace('$', '')
+                total_after_fees = round((new_total - float(dp_fees) - float(dp_payment_fee) - float(boosting_fee)), 2)
+                self.df.loc[itm, 'Total after fees'] = total_after_fees
+                
+    def inserting_for_single_items(self):
+        """
+        this code will find the total after fees for each item by getting total + shipping and - (depop fees, payments fees and boosting fees)
+        then with this our code will be officially ready to insert into our matplotlib graph
+        """
+        bundle_id_list = self.identifying_bundles()
+        total_ids = self.df['Buyer'].count()
+        for idx in range(total_ids):
+            if idx not in bundle_id_list:
+                dp_buyer = self.df.loc[idx, 'Buyer']
+                dp_fees = float(self.df.loc[idx, 'Depop fee'].replace('$', ''))
+                dp_payment = float(self.df.loc[idx, 'Depop Payments fee'].replace('$', ''))
+                boosting_fee = float(self.df.loc[idx, 'Boosting fee'].replace('$', ''))
+                dp_total = float(self.df.loc[idx, 'Total'].replace('$', ''))
+                total_after_fees = round((dp_total - dp_fees - dp_payment - boosting_fee), 2)
+                print(idx, dp_buyer, total_after_fees)
+                self.df.loc[idx, 'Total after fees'] = total_after_fees
+    
+    def exporting_as_csv_and_db(self):
+        """
+        this exports the spreadsheet we prepared into a csv file
+        #!!
+        still need to add the shipping cost method below this and put it above this before we officially export to csv, but for now thisll do
+        """
+        print('running exporting as csv db file')
+        print('running exporting as csv db file')
+        print('running exporting as csv db file')
+        username = '_realvintage'
+
+        excel_csv_name = f'ovr_depop_sales{self.account_username}.csv'
+        self.df = pd.read_csv(r"D:\Selenium_python2\Sold Spreadsheets\Depop Sales.csv")
+        self.df['Description'] = self.df['Description'].str.encode('ascii', 'ignore').str.decode('ascii').str.split(r'#|PLEASE').str[0].str.strip()
+
+        self.df.to_sql(f'dp_csv_solds_{username}', con=self.conn, index=False, if_exists='replace')
+        
+        # def shipping_cost_for_item():
+        #     """
+        #     this will extract the shipping cost for each item and then add it to the total, to get a much more accurate number
+        #     if shipping cost not able to be found, due to different name, or other reason
+        #     we will just create a dictionary of estimated shipping price based on what information we have available, for most part
+        #     it should all work fine, but this will be just in case
+        #     """
+        #     shipping_costs = {
+        #         4.50: ['T-shirts', 'Hats', 'Other', 'Polo Shirts'],
+        #         5: ['Jeans', 'Joggers', 'Hoodies'],
+        #         6: ['Sweatshirts']
+        #     } #! will refine this when I have a better idea on shipping cost 
+        #     #! Extracting the location would be nice too, then I can create a universal shipping dictionary for this
+            
+        #     total_buyer_names = df_master['Name']
+        #     for idb, buyer_name in enumerate(total_buyer_names):
+                # pirate_ship_search_bar = driver.find_element('css selector', '[name="search-input"]')
+                # pirate_ship_search_bar.send_keys(buyer_name)
+                # WebDriverWait(driver, 6).until(EC.presence_of_element_located(('css selector', '[class="currency"]')))
+
+                # item_shipping_price = driver.find_element('css selector', '[class="currency"]').text.replace('$', '')
+                # df_master['Shipping cost'] = float(item_shipping_price)
+                # df_master.loc[idb, 'Total after fees'] = df_master['Total after fees'] - float(item_shipping_price)
+                # for _ in range(3):
+                #     pirate_ship_search_bar.click()
+                
+    # def join_depop_sales(self, dp_username, ebay_username):
+    #     depop_sold_join_query = cursor.execute(
+    #         f"""
+    #         CREATE TABLE IF NOT EXISTS dp_solds_join_{self.account_username} AS
+    #         SELECT * FROM dp_csv_sold_{dp_username}
+    #         LEFT JOIN dp_solds_{dp_username} ON dp_csv_sold_{dp_username}.Title = dp_solds_{dp_username}.dp_title
+    #         """
+    #     )
+    #     cursor.execute(depop_sold_join_query)
+    #     conn.commit()
+    #     cursor.close()
+    #     conn.close()
+    
+    
+# extracting_the_last_date()
+# print('starting the code')
+# dp_start_up('argelarroyo2001@gmail.com', 'Pineappleguy305')
+# extracting_depop_excel_sheets()
+
+preparer = DataPreparer(sqlite_database, account_name)
+# preparer.load_data()
+# preparer.bundle_shipping_average()
+# preparer.inserting_for_single_items()
+preparer.exporting_as_csv_and_db()
+
+# #! what to get after merging
+# - dp likes
+# - dp_gen_cat
+# - dp color1
+# - dp men or women
+# - dp condition
