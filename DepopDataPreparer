@@ -1,0 +1,530 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import time
+import Levenshtein
+import psutil
+import sqlite3
+import os
+import traceback
+import re
+from datetime import datetime
+from selenium import webdriver
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.keys import Keys
+
+no_shipment_found = []
+shipping_payment = []
+class DataPreparer:
+    """
+    this class will allow us to prepare data from depop to be entered into our visualization program
+    """
+    csv_file = 'D:\\Selenium_python2\\Sold Spreadsheets\\Depop Sales.csv'
+    account_name = '_realvintage'
+    def __init__(self):
+        self.df = None
+        self.df_shipping = None
+        
+    def load_data(self):
+        """
+        this loads the spreadsheets and concats this into one file
+        """
+        # matching_files = []
+
+        # ten_minutes_ago = time.time() - 10 * 60  
+        # available_drives = [d.mountpoint for d in psutil.disk_partitions()]
+        # # Walk through each drive and its subdirectories
+        # for drive in available_drives:
+        #     print(drive)
+        #     for root, _, files in os.walk(drive):
+        #         for filename in files:
+        #             if filename.endswith(".csv") and 'Recycle' not in filename and 'Depop Sales' in filename:
+        #                 file_path = os.path.join(root, filename)
+        #                 file_mtime = os.path.getmtime(file_path)
+
+        #                 if file_mtime >= ten_minutes_ago:
+        #                     matching_files.append(file_path)
+    #                     print(file_path)
+        # matching_files = [
+        #     r'C:\Users\Argel Arroyo\Downloads\Depop Sales 01_06_2022 - 04_05_2022.csv',
+        #     r'C:\Users\Argel Arroyo\Downloads\Depop Sales 01_06_2023 - 04_05_2023.csv',
+        #     r'C:\Users\Argel Arroyo\Downloads\Depop Sales 04_06_2022 - 07_05_2022.csv',
+        #     r'C:\Users\Argel Arroyo\Downloads\Depop Sales 04_06_2023 - 07_05_2023.csv',
+        #     r'C:\Users\Argel Arroyo\Downloads\Depop Sales 07_06_2021 - 10_05_2021.csv',
+        #     r'C:\Users\Argel Arroyo\Downloads\Depop Sales 07_06_2022 - 10_05_2022.csv',
+        #     r'C:\Users\Argel Arroyo\Downloads\Depop Sales 07_06_2023 - 10_05_2023.csv',
+        #     r'C:\Users\Argel Arroyo\Downloads\Depop Sales 10_06_2021 - 01_05_2022.csv',
+        #     r'C:\Users\Argel Arroyo\Downloads\Depop Sales 10_06_2022 - 01_05_2023.csv',
+        #     r'C:\Users\Argel Arroyo\Downloads\Depop Sales 10_06_2023 - 11_08_2023.csv'
+        # ]
+        # dates = [datetime.strptime(re.search(r'\d{2}_\d{2}_\d{4}', file).group(0), "%m_%d_%Y") for file in matching_files]
+        # sorted_files = [x for _, x in sorted(zip(dates, matching_files))]
+        # df_read = [pd.read_csv(file) for file in sorted_files]
+        # df = pd.concat(df_read)
+  
+        # df = df[df['Refunded to buyer amount'].isna()].reset_index() #! add these back
+        # removing_columns = [
+        #     'Time of sale', 
+        #     'USPS Cost',
+        #     'Payment type', 
+        #     'Address Line 1', 
+        #     'Address Line 2',
+        #     'Post Code', 
+        #     'Country', 
+        #     'City',
+        #     'State',
+        #     'Fees refunded to seller',
+        #     'Unknown Tax',
+        #     'Refunded to buyer amount'
+        #     ]
+        # #! INFORMATION THAT IS MISSING
+        # #TODO Condition, Color, Department
+        # df = df.drop(columns=removing_columns)
+        
+        # pd.set_option('display.max_rows', None)  # Display all rows
+        
+        # df['Depop Payments fee'] = df['Depop Payments fee'].replace('="-"', '0')
+        # df['Boosting fee'] = df['Boosting fee'].replace('="-"', '0').replace('$-', '0')
+        # df['Description'] = df['Description'].str.encode('ascii', 'ignore').str.decode('ascii').str.split(r'#|PLEASE').str[0]
+        # df['US Sales tax'] = df['US Sales tax'].fillna(0)
+        
+        df = pd.read_csv(r"D:\Selenium_python2\Sold Spreadsheets\Depop Sales.csv")
+        self.df = df
+        # self.df.to_csv('D:\\Selenium_python2\\Sold Spreadsheets\\DP.csv', index=False)
+        
+    def identifying_bundles(self):
+        """
+        this code will turn bundles into single valued items, meaning that it will breakdown the bundle price into the normal price while taking in the average of each shipping price for each item 
+        """
+        result_of_blanks = self.df[self.df['Bundle']== 'Yes']
+        IDs = []
+
+        for idx in result_of_blanks.index:
+            IDs.append(idx)
+        return IDs
+
+    def grouping_numbers_together(self):
+        """
+        this will group all the bundles together by searching for any numbers which are adjacent to each other, then creating a nested list
+        """
+        id_list = self.identifying_bundles()
+        adjacent_groups = []
+        current_group = [id_list[0]]
+        for i in range(1, len(id_list)):
+            new_group = False
+            if id_list[i] - id_list[i - 1] == 1:
+                if str(self.df.loc[id_list[i], 'Buyer']) == str(self.df.loc[id_list[i-1], 'Buyer']):
+                    current_group.append(id_list[i])
+                else:
+                    new_group = True
+            else:
+                new_group = True
+                
+            if new_group:
+                adjacent_groups.append(current_group)
+                current_group = [id_list[i]]
+
+        adjacent_groups.append(current_group)
+        # print(adjacent_groups)
+        return adjacent_groups
+     
+    def bundle_buyer_shipping_average(self):
+        """
+        this calculates average shipping for each item in bundle &
+        inserts that item price for the bundle for each item
+        """
+        adjacent_groups = self.grouping_numbers_together()
+        # print(adjacent_groups)
+        print(shipping_payment)
+        for groups in adjacent_groups:
+            print(groups[0])
+            total_amt_in_bundle = len(groups)
+            buyer_shipping_cost = float(self.df.loc[groups[0], 'Buyer shipping cost'].replace('$', ''))
+            payment_fee_cost = float(self.df.loc[groups[0], 'Depop Payments fee'].replace('$', ''))
+            depop_fee_cost = float(self.df.loc[groups[0], 'Depop fee'].replace('$', ''))
+            us_sales_tax_cost = self.df.loc[groups[0], 'US Sales tax']
+            item_shipping_cost = shipping_payment[groups[0]]
+            print(item_shipping_cost)
+            try:
+                us_sales_tax_cost = float(us_sales_tax_cost)
+            except ValueError:
+                us_sales_tax_cost = float(us_sales_tax_cost.replace('$', ''))
+            
+            if buyer_shipping_cost == 0:
+                shipping_each_item_avg = 0
+            else:
+                shipping_each_item_avg = round(buyer_shipping_cost / total_amt_in_bundle, 2)
+            
+            if payment_fee_cost == 0:
+                payment_fee_avg = 0
+            else:
+                payment_fee_avg = round(float(payment_fee_cost) / total_amt_in_bundle, 2)
+            
+            if depop_fee_cost == 0:
+                depop_fee_avg = 0
+            else:
+                depop_fee_avg = round(depop_fee_cost / total_amt_in_bundle, 2)
+            
+            if us_sales_tax_cost == 0:
+                us_sales_tax_avg = 0
+            else:
+                us_sales_tax_avg = round(us_sales_tax_cost / total_amt_in_bundle, 2)
+                
+            if item_shipping_cost == 0:
+                item_shipping_avg = 0
+            else:
+                item_shipping_avg = round(float(item_shipping_cost) / total_amt_in_bundle, 2)
+            
+            for itm in groups:
+                dp_total = round(float(self.df.loc[itm, 'Item price'].replace('$', '')) + float(shipping_each_item_avg) + us_sales_tax_avg, 2)
+                dp_payment_fee = float(payment_fee_avg)
+                desc = self.df.loc[itm, 'Description']
+                self.df.loc[itm, ['Buyer shipping cost', 'Total', 'Depop fee', 'Depop Payments fee', 'US Sales tax']] = [shipping_each_item_avg, dp_total, depop_fee_avg, dp_payment_fee, us_sales_tax_avg]
+                dp_boosting_fee = self.df.loc[itm, 'Boosting fee'].replace('$', '')
+                print(itm, desc, shipping_each_item_avg, dp_total, dp_payment_fee, depop_fee_avg)
+                total_after_fees = round((dp_total - float(depop_fee_avg) - float(dp_payment_fee) - float(dp_boosting_fee) - float(us_sales_tax_avg) - float(item_shipping_avg)), 2)
+                self.df.loc[itm, 'Total after fees'] = total_after_fees
+                print(total_after_fees)
+
+    def shipping_cost_for_item(self, email, pw):
+        """
+        this will extract the shipping cost for each item and then add it to the total, to get a much more accurate number
+        if shipping cost not able to be found, due to different name, or other reason
+        we will just create a dictionary of estimated shipping price based on what information we have available, for most part
+        it should all work fine, but this will be just in case
+        """
+        # chrome_options = Options()
+        # chrome_options.add_experimental_option("detach", True)
+        # driver = webdriver.Chrome("D:\\Selenium_python2\\chromedriver.exe", chrome_options=chrome_options)
+        # driver.get("https://ship.pirateship.com/reports/shipment")
+        # # shipping_costs = { ##! will refine the dictionary later
+        # #     4.50: ['T-shirts', 'Hats', 'Other', 'Polo Shirts'],
+        # #     5: ['Jeans', 'Joggers', 'Hoodies'],
+        # #     6: ['Sweatshirts']
+        # # } #! will refine this when I have a better idea on shipping cost 
+        # #! Extracting the location would be nice too, then I can create a universal shipping dictionary for this
+        # WebDriverWait(driver, 15).until(EC.presence_of_element_located(('css selector', '[name="email"]')))
+        # email_input = driver.find_element('css selector', '[name="email"]')
+        # email_input.send_keys(email)
+        # password_input = driver.find_element('css selector', '[name="password"]')
+        # password_input.send_keys(pw)
+        # pirate_ship_log_me_in = driver.find_element('xpath', '//*[contains(@class, "btn-login")]')
+        # driver.execute_script('arguments[0].click();', pirate_ship_log_me_in)
+        # WebDriverWait(driver, 60).until(EC.presence_of_element_located(('css selector', '[class="form-control"]')))
+        # reports_url = 'https://ship.pirateship.com/reports'
+        # driver.execute_script(f"window.open({reports_url});")
+        # export_button = driver.find_element('id', 'grid-action-btn-export')
+        # driver.execute_script('arguments[0].click();', export_button)
+        
+        #finds the export file we just downloaded
+        pirate_ship_export_file = None
+        found_file = False
+
+        # ten_minutes_ago = time.time() - 10 * 60  
+        # available_drives = [d.mountpoint for d in psutil.disk_partitions()]
+        # # Walk through each drive and its subdirectories
+        # for drive in available_drives:
+        #     print(drive)
+        #     for root, _, files in os.walk(drive):
+        #         for filename in files:
+        #             if filename.endswith(".xlsx") and 'Recycle' not in filename and 'Transactions' in filename:
+        #                 file_path = os.path.join(root, filename)
+        #                 file_mtime = os.path.getmtime(file_path)
+
+        #                 if file_mtime >= ten_minutes_ago:
+        #                     pirate_ship_export_file.append(file_path)
+        #                     found_file = True
+        #                     break
+        #         if found_file:
+        #             break
+        #     if found_file:
+        #         break
+        # print(pirate_ship_export_file)
+        pirate_ship_export_file = r"C:\Users\Argel Arroyo\Downloads\Transactions.xlsx"
+        self.df_shipping = pd.read_excel(pirate_ship_export_file)
+        return pirate_ship_export_file
+    
+    def find_similar_words(self, target_word, word_list, threshold=4):
+        similar_words = [word for word in word_list if Levenshtein.distance(target_word, word) <= threshold]
+        return similar_words
+
+    @staticmethod
+    def normalize_spaces(s):
+        # Replace multiple spaces with a single space and strip leading/trailing spaces
+        return ' '.join(s.split())
+    
+    def editing_shipping_file(self):
+        """
+        edits shipping file we just exported to make sure that there are only label rows in it
+        """
+        export_file = preparer.shipping_cost_for_item('argelarroyo2001@gmail.com', 'Fernanda*1979')
+        #! REMOVING REFUNDS
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        df_shipping_names = np.array(self.df_shipping[self.df_shipping['Type'] == 'Label']['Description'].str.split(':').apply(lambda x: x[0]).values)
+        df_shipping_totals = np.array(self.df_shipping[self.df_shipping['Type'] == 'Label']['Total'])
+        
+        
+        refund_data = self.df_shipping[self.df_shipping['Type'] == 'Refund'][['Description', 'Total']]
+        shipping_refund_names = np.array(refund_data['Description'].str.split(':').apply(lambda x: x[0]).values)
+        shipping_refund_total = np.array(refund_data['Total'] * -1)
+        print(df_shipping_names)
+        for row_id, row in enumerate(shipping_refund_names):
+            print(shipping_refund_names[row_id], shipping_refund_total[row_id])
+            total_match = np.where((df_shipping_totals==shipping_refund_total[row_id]))
+            name_match = np.where((df_shipping_names==shipping_refund_names[row_id]))
+            for name in name_match[0]:
+                if shipping_refund_total[row_id] == df_shipping_totals[name]:
+                    print(f'FOUND THE MATCH AT {name}')
+                    print(' ')
+                    break
+        
+        
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+        
+        print(len(shipping_refund_names), len(shipping_refund_total))
+        # total_after_removing_refunds = self.df_shipping[self.df_shipping['Total']
+        print(shipping_refund_total)
+        zip_names_and_totals = zip(shipping_refund_total, shipping_refund_names)
+        print(list(zip_names_and_totals))
+        duplicates_names = {ship_names: np.sum(df_shipping_names == ship_names) for ship_names in shipping_refund_names}
+        print(duplicates_names)
+        completely_refunded_purchases = [string for string, count in duplicates_names.items() if count == 1]
+        # 1 = purchases were completely refunded, so if these names are in the depop_sales spreadsheet, remove them
+        # 2 = Label had to be repurchased
+        # - just completely take out the text where the description and total are the same
+        # 3 = Repeat buyer
+        total_names = np.array([item for item in total_names if item not in completely_refunded_purchases])
+        
+        
+        # print(len(shipping_refund_names), shipping_refund_names)
+        
+        # print(len(total_names))
+        # total_names_set = set(total_names)
+        # print(len(total_names_set))
+        # print(total_names_set - total_names)
+        # print('')
+        # print('')
+        # shipping_refund_names_set = set(shipping_refund_names)
+        # print(len(total_names), total_names)
+        # similarties = shipping_refund_names_set & total_names_set
+        # print(len(similarties), similarties)
+        
+        # for name in shipping_refund_names_set:
+        #     total_names_set.remove(name)
+            
+        # print('')
+        # print(len(total_names_set))
+        # print('')
+        # for names in shipping_refund_names:
+            
+            
+        self.df_shipping = self.df_shipping[self.df_shipping['Type'] == 'Label'].reset_index()
+        self.df_shipping['Description'] = self.df_shipping['Description'].str.replace(': 1 Label Batch', '')
+        # self.df_shipping.to_csv('D:\\Selenium_python2\\Sold Spreadsheets\\PirateShipExport.csv', index=False)
+        # print(self.df['Name'].str.lower()[::-1])
+        print('start of editing shipping file')
+        shipping_matching_index = []
+        df_matching_index = []
+        df_shipping_no_matches = []
+        df_no_matches = []
+        df_shipping_name = []
+        matches = []
+        no_match = 0
+        match_ = 0
+        for index, row in self.df_shipping.iterrows():
+            desc_value = self.normalize_spaces(row['Description'].lower())
+            # print('')
+            # print('')
+            # print(desc_value)
+            similar_words = self.find_similar_words(desc_value, self.df['Name'].str.lower().str.strip().tolist())
+            # print(desc_value)
+            # print(similar_words)
+            # matching_idx = self.df.index[self.df['Name'].str.lower().str.strip() == desc_value]
+            matching_idx = self.df.index[self.df['Name'].apply(self.normalize_spaces).str.lower().str.strip().isin(similar_words)]
+
+            if len(matching_idx) > 0:
+                match_ += 1
+                matching_total = self.df_shipping.loc[index, 'Total']
+                tupl = matching_idx[0], desc_value, matching_total
+                # print(tupl)
+                # if any(desc_value == self.normalize_spaces(name.lower().strip()) for name in self.df['Name'][::-1]):
+                if any(Levenshtein.distance(desc_value, name.lower().strip()) <= 3 for name in self.df['Name'][::-1]):
+
+                    # print(index)
+                    # print(matching_idx)
+                    # print('FOUND MATCH')
+                    shipping_matching_index.append(index)
+                    df_matching_index.append(matching_idx[0])
+                    df_shipping_name.append(desc_value)
+                    matches.append(tupl)
+                    
+            else:
+                if 'alexandra' in desc_value:
+                    print(desc_value)
+                missing_index = index, desc_value
+                df_shipping_no_matches.append(missing_index)
+                # df_no_matches.append()
+                no_match += 1
+                # print('----------------------------------------')
+                
+        print(len(matches))
+        print(len(df_shipping_no_matches), df_shipping_no_matches)
+        print(no_match)
+        df_names = self.df['Name'].str.lower().str.strip()
+        df_shipping_names = [self.normalize_spaces(desc) for desc in self.df_shipping['Description'].str.lower().str.strip()]
+        df_name_differences = list(set(df_names) - set(df_shipping_name))
+        df_shipping_name_differences = list(set(df_shipping_names) - set(df_shipping_name))
+        # print(len(df_shipping_name_differences), df_shipping_name_differences)
+        # print('')
+        # print(len(df_name_differences), df_name_differences)
+        # print(match_)
+        # print(shipping_matching_index)
+        # print(df_matching_index)
+            # if matching_idx not in shipping_matching_index:
+                
+        # print(matching_index)
+                # for idx in matching_index:
+                #     df_shipping_value = self.df_shipping.loc[idx, 'Total']
+                    
+                    # print(f"df idx: {index}, df_ship idx: {idx}, df_ship value: {df_shipping_value}, desc: {desc_value}")
+
+        # go through each row 
+        # identify the name 
+        # search for the name in the other column #! beware since this one is recent to oldest while other csv is oldest to recent
+        # once match is found, put the index into a list to make sure we dont reuse that same index again then continue with Loop 
+        # Will figure out what to do with leftover columns that didnt make the cut afterwards
+        
+    def inserting_for_single_items(self):
+        """
+        this code will find the total after fees for each item by getting total + shipping and - (depop fees, payments fees and boosting fees)
+        then with this our code will be officially ready to insert into our matplotlib graph
+        """
+        bundle_id_list = self.identifying_bundles()
+        total_ids = self.df['Buyer'].count()
+        print("Total number of IDs (including duplicates):", total_ids)
+        for idx in range(total_ids):
+            if idx not in bundle_id_list:
+                dp_buyer = self.df.loc[idx, 'Buyer']
+                dp_fees = float(self.df.loc[idx, 'Depop fee'].replace('$', ''))
+                dp_payment = float(self.df.loc[idx, 'Depop Payments fee'].replace('$', ''))
+                boosting_fee = float(self.df.loc[idx, 'Boosting fee'].replace('$', ''))
+                dp_total = float(self.df.loc[idx, 'Total'].replace('$', ''))
+                dp_us_tax = self.df.loc[idx, 'US Sales tax']
+                dp_shipping_fee_for_item = shipping_payment[idx]
+                # try:
+                #     dp_us_tax = float(dp_us_tax)
+                # except ValueError:
+                #     dp_us_tax = float(dp_us_tax.replace('$', ''))
+                dp_us_tax = float(dp_us_tax.replace('$', ''))
+                total_after_fees = round((dp_total - dp_fees - dp_payment - boosting_fee - dp_us_tax), 2)
+                # print(idx, dp_buyer, total_after_fees)
+                self.df.loc[idx, 'Total after fees'] = total_after_fees
+
+    def exporting_as_csv(self, filename):
+        """
+        this exports the spreadsheet we prepared into a csv file
+        """
+        self.df.to_csv(f'D:\\Selenium_python2\\Sold Spreadsheets\\{filename}.csv', index=True)
+
+    def csv_to_database(self):
+        """
+        this converts the sold excel spreadsheet into a database, to set up for our next step,
+        which would be to join the tables together
+        """
+        conn = sqlite3.connect('D:\\Selenium_python2\\Depop_database.db')
+        cursor = conn.cursor()
+        
+        with open(self.csv_file, 'r', newline='', encoding='utf-8') as csv:
+            csv_reader = csv.reader(csv)
+            table_name = f'dp_sold_{self.account_name}'
+            
+            create_table_query = f"""
+                CREATE TABLE IF NOT EXIST {table_name} (
+                    dp_title TEXT UNIQUE,
+                    dp_likes INT,
+                    dp_condition TEXT,
+                    dp_color1 TEXT,
+                    dp_color2 TEXT,
+                    dp_gender TEXT,
+                    dp_gen_cat TEXT
+                )
+            """
+            cursor.execute(create_table_query)
+            
+            insert_query = f"""
+                INSERT OR IGNORE INTO {table_name} (
+                    dp_title,
+                    dp_likes,
+                    dp_condition,
+                    dp_color1,
+                    dp_color2,
+                    dp_gender,
+                    dp_gen_cat
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """
+            rows_to_insert = [row for row in csv_reader]
+            cursor.executemany(insert_query, rows_to_insert)
+            
+            conn.commit()
+            conn.close()
+
+
+preparer = DataPreparer()
+preparer.load_data()
+# preparer.shipping_cost_for_item('argelarroyo2001@gmail.com', 'Fernanda*1979')
+# preparer.bundle_buyer_shipping_average()
+# preparer.inserting_for_single_items()
+# preparer.exporting_as_csv('Depop Sales')
+preparer.editing_shipping_file()
