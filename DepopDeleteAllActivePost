@@ -1,0 +1,48 @@
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from DPFunctions import *
+import time
+
+DEPOP_USERNAME = '_realvintage'
+chrome_options = Options()
+chrome_options.add_experimental_option("detach", True)
+driver = webdriver.Chrome("D:\\Selenium_python2\\chromedriver.exe", chrome_options=chrome_options)
+driver.get(f"https://www.depop.com/{DEPOP_USERNAME}/")
+
+def deleting_post_script():
+    """ 
+    goes post by post to delete all active post
+    """
+    delete_iterator = 0
+    while True:
+        while True:
+            WebDriverWait(driver, 30).until(EC.element_to_be_clickable(('xpath', '//*[contains(@class, "FullName")]')))
+            total_posts = driver.find_elements('css selector', '[data-testid="product__item"]')
+            if len(total_posts) >= 1:
+                driver.execute_script("arguments[0].scrollIntoView({block: 'center'})", total_posts[delete_iterator])
+                total_posts[delete_iterator].click()
+                break
+        WebDriverWait(driver, 30).until(EC.element_to_be_clickable(('css selector', '[class*="TextContainer"]')))
+        dp_title = driver.find_element('css selector', '[class*="TextContainer"]').text
+        print(dp_title)
+        if 'GANT Burgundy Embroidered Quarter Zip Sweater Large' in dp_title or 'San Jose Golddigger Vintage Sports Volleyball Hat White foam trucker mesh cap' in dp_title:
+            delete_iterator += 1
+            driver.back()
+            continue
+        
+        try:
+            delete_button = WebDriverWait(driver, 8).until(EC.element_to_be_clickable(('css selector', '[data-testid="button__delete"]')))
+        except:
+            delete_iterator += 1
+            continue
+        driver.execute_script('arguments[0].click();', delete_button)
+        time.sleep(1)
+
+        delete_button_confirm = WebDriverWait(driver, 30).until(EC.element_to_be_clickable(('css selector', '[data-testid="confirmation--modal__confirm"]')))
+        delete_button_confirm.click()
+
+dp_start_up(driver, 'argelarroyo2001@gmail.com', 'Pineappleguy305')
+scroll_down_script(driver, 'Selling')
+deleting_post_script()
