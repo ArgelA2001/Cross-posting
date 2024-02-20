@@ -1,0 +1,181 @@
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import Select
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import time
+# from text_parser import general_description
+
+print('beginning')
+
+chrome_options = Options()
+chrome_options.add_experimental_option("detach", True)
+driver = webdriver.Chrome("D:\\Selenium_python2\\chromedriver.exe", chrome_options=chrome_options)
+driver.get("https://www.mercari.com/sell/?referer=direct")
+
+def start_up(): 
+    print('startup')
+    cookies_button = driver.find_element('id', 'truste-consent-button')
+    cookies_button.click()
+    time.sleep(1)
+    print('email')
+    email = driver.find_element('css selector', "[placeholder='Enter your email']")
+    email.send_keys('argelarroyo2001@gmail.com')
+    print('password')
+    password = driver.find_element('css selector', "[placeholder='Enter your password']")
+    password.send_keys('Fernanda*1979')
+    print('log in button')
+    log_in_button = driver.find_element('xpath', '//*[contains(@class, "H4--4y6v7u fuPXdI")]')
+    log_in_button.click()
+    time.sleep(2)
+
+def verification():
+    time.sleep(3)
+    #make an error code so that if the code takes a while to lon in, just restarts?
+    try: 
+        time.sleep(6)
+        send_sms = driver.find_element('css selector', '[data-testid="VerifyPhoneMFAButton"]')
+        send_sms.click()
+        #find a way to create it so that it waits for like a minute until the next page pops up
+        time.sleep(25)
+    except:
+        print('no sms needed')
+
+def x_out():
+    x = driver.find_elements('xpath', '//*[contains(@class, "WrapperButton--1uismfw ehyOjW")]')
+    if len(x) == 2:
+        print('x was clicked')
+        x[1].click()
+    else:
+        pass
+
+def color(item_color):
+    print('start coloring')
+    time.sleep(6)
+    # WebDriverWait(driver, 20).until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "BaseButton--1suxwwd kJCJkc")')))\
+    time.sleep(1)
+    coloring = driver.find_elements('xpath', '//*[contains(@class, "SelectInputEl--yqup6d jCDKeT")]')
+    coloring[1].click()
+    print('len coloring = ',  len(coloring))
+    time.sleep(3)
+    coloring = driver.find_elements('css selector', '[id*="itemColorId"]')
+    print(len(coloring))
+    print(item_color)
+    for color_element in coloring:
+        if item_color == color_element.text:
+            print(color_element.text)
+            color_element.click()
+
+def title(item_title):
+    title = driver.find_element('id', "sellName")
+    title.send_keys(item_title)
+
+def description(gen):
+    description = driver.find_element('id', "sellDescription")
+    description.send_keys(gen)
+
+def hashtags():
+    hashtag1 = driver.find_element('css selector', "[data-testid='Tag1']")
+    hashtag1.send_keys('Vintage')
+    hashtag2 = driver.find_element('css selector', "[data-testid='Tag2']")
+    hashtag2.send_keys('Clothes')
+    hashtag3 = driver.find_element('css selector', "[data-testid='Tag3']")
+    hashtag3.send_keys("Dope")
+
+
+def category(main_category):
+    category_click = driver.find_element('css selector', '[data-testid="CategoryL0"]')
+    category_click.click()
+    time.sleep(1)
+    options = driver.find_elements('css selector', '[data-testid^="select-opt"]')
+    print(len(options))
+    if main_category == 'WMN':
+        options[0].click()
+
+    elif main_category == 'Men':
+        options[1].click()
+
+    elif main_category == 'Electronics':
+        options[2].click()
+
+    elif main_category == 'Toys & Collectibles':
+        options[3].click()
+
+def sub_category(sub):
+    #this goes into deeper sub_category options too so would need to create a dictionary if needed
+    sub_category_click = driver.find_element('css selector', '[data-testid="CategoryL1"]')
+    sub_category_click.click()
+    time.sleep(1)
+    options = driver.find_elements('css selector', '[data-testid^="select-opt"]')
+    print(len(options))
+    if sub == 'Tops':
+        options[0].click()
+
+    elif sub == 'Sweat & Hoodies':
+        options[1].click()
+
+    elif sub == 'Sweaters':
+        options[2].click()
+
+    elif sub == 'Jeans':
+        options[3].click()
+
+    elif sub == 'Pants':
+        options[4].click()
+
+    elif sub == 'Shorts':
+        options[5].click()
+
+    elif sub == 'Coats & Jackets':
+        options[6].click()
+    
+def branding(brand_of_item):
+    brand = driver.find_element('css selector', '[data-testid="Brand"]')
+    brand.send_keys(brand_of_item)
+    picking_brand = driver.find_element('css selector', '[data-testid=' + brand_of_item + ']')
+    picking_brand.click()
+
+def condition(cond):
+    condition = driver.find_elements('xpath', '//*[contains(@class, "ConditionField__StyledLabel-sc-961a2c6c-0 dOrMcp")]')
+    if cond == 'New':
+        condition[0].click()
+    if cond == "Flawed":
+        condition[3].click()
+    else:
+        condition[2].click()
+
+def pick_shipping():
+    own_shipping = driver.find_element('css selector', '[aria-label="shipOnYourOwn"]')
+    own_shipping.click()
+
+def pricing(price_of_item):
+    price_input = driver.find_elements('id', 'sellPrice')
+    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+    time.sleep(1)
+    print(len(price_input))
+    try:
+        price_input[1].send_keys(price_of_item)
+        print('111')
+    except:
+        price_input[0].send_keys(price_of_item)
+        print('000')
+
+
+print('starting script')
+start_up()
+verification()
+x_out()
+# title('title')
+# description('yup thats right')
+# hashtags()
+# color('Red')
+# category('Men')
+# sub_category('Tops')
+# branding('Nike')
+# condition('New')
+pricing('21')
+pick_shipping()
+
+#only thing left is to add pictures
