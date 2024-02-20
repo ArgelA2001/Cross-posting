@@ -1,0 +1,287 @@
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import StaleElementReferenceException
+from selenium.webdriver.common.alert import Alert
+# from DBPicsToFile import create_file_path
+import time
+import sqlite3
+import traceback
+import shutil
+import os
+import requests
+import json
+
+#!! THIS MUST BE UP TO DATE WITH THE CURRENT DP_INV_
+chrome_options = Options()
+chrome_options.add_experimental_option("detach", True)
+driver = webdriver.Chrome("D:\\Selenium_python2\\chromedriver.exe", chrome_options=chrome_options)
+driver.get('https://app.photoroom.com/login')
+
+conn = sqlite3.connect('D:\\Selenium_python2\\Depop_database.db')
+cursor = conn.cursor()
+
+PROGRAM = 'dp'
+USERNAME = '_realvintage'
+TABLE_NAME = f'{PROGRAM}_inv_{USERNAME}'
+USE_COLOR = False
+COLOR_USER_PICKED = 'Custom'
+HEX_USER_PICKED = '9EA9BD'
+
+if not USE_COLOR:
+    BACKGROUND_NAME = 'Concrete'
+else:
+    if COLOR_USER_PICKED == 'Custom':
+        BACKGROUND_NAME = HEX_USER_PICKED
+    else:
+        BACKGROUND_NAME = COLOR_USER_PICKED
+
+#todo will have options to choose which concrete backgroud or other backgrounds in the near future
+#! overall file where all picture folders are located
+BASE_DIRECTORY = 'D:\\Selenium_python2\\Pic_folder' 
+#! name of new file depending on the edit we like to make
+SUB_DIRECTORY = f'{TABLE_NAME}{BACKGROUND_NAME}'
+DESTINATION_FILE_NAME = f'{BASE_DIRECTORY}\\{SUB_DIRECTORY}'
+
+def create_file_path(filepath, base_directory_name, subdirectory_name):
+    """
+    checks the filepath and confirms or denies whether the file exists or not
+    """ #! use DBPicsToFile to extract the images from db to a folder
+    # Extracting the directory from the filepath
+
+    # Check if the file exists
+    if not os.path.isfile(filepath):
+        subdirectory_path = os.path.join(base_directory_name, subdirectory_name)
+        os.makedirs(subdirectory_path, exist_ok=True)
+    else:
+        print(f'The file "{filepath}" already exists.')
+
+def removal_log_in(my_email):
+    """ 
+    logs into my bg removal account, free version
+    """
+    #sign in
+    continue_w_email = WebDriverWait(driver, 60).until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "max-w-full flex items-center justify-center h-12 content-to-edge-spacious-px-600")]')))
+    continue_w_email.click()
+
+    time.sleep(2)
+    log_in_email = driver.find_element('css selector', '[id="email"]')
+    log_in_email.send_keys(my_email)
+
+    magic_code_button = driver.find_element('xpath', '//*[contains(@class, "max-w-full flex items-center justify-center h-12 content-to-edge-spacious-px-600")]')
+    magic_code_button.click()
+
+    #would have to get magic code button manually but other than that first step it shoudl all be good, unless i want to figure out other way to use code to use existing browser, like a script
+    #would actually have to copy the link address and then paste it, ill leave a little section on the gui to paste this link into, and error button if it worked, 
+    #Would need to enter code to get user input to copy and paste the link
+
+#----------------------------------------------------------------
+    # magic_code_link = '' #would extract this from the text box
+    # driver.execute_script("window.open('{}');".format(magic_code_link))
+    # driver.close()
+    # driver.switch_to.window(driver.window_handles[1])    
+#----------------------------------------------------------------
+    #add option to click the magic code again if needed
+    WebDriverWait(driver, 120).until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "max-w-full flex items-center justify-center h-12 icon-to-edge-spacious-pl-500 content-to-edge-spacious-pr-600")]')))
+
+    # time for captcha
+    create_button = WebDriverWait(driver, 120).until(EC.presence_of_element_located(('css selector', '[href="/create"]')))
+    driver.execute_script("arguments[0].click();", create_button)
+
+def extracting_sql_results():
+    """ 
+    gets all the directories from the folders of the pics im trying to change and
+    places them into a list to then use removal_editer
+    """
+    #gathers all the images paths and places into list
+    image_list = []
+    #! list of unedited pics that are in folder, i have a list to gather these into a folder, will link back here soon
+
+    folder_directory = os.path.join(BASE_DIRECTORY, TABLE_NAME)
+    for img in os.listdir(folder_directory):
+        image_path = os.path.join(folder_directory, img)
+        image_list.append(image_path)
+
+    #this checks the folder and sees whats the last current post and continues from there if needed
+    files = os.listdir(DESTINATION_FILE_NAME)
+    background_file_len = len(files)
+    image_list_whats_left = image_list[background_file_len:]
+
+    #this first focuses on changin background to every single pic
+    print(len(image_list_whats_left))
+    for image in image_list_whats_left:
+        removal_editer(image, USE_COLOR, COLOR_USER_PICKED, HEX_USER_PICKED)
+
+    #will most likely need row result to extract the url_list with the id_num given in file path
+    #then once all pics have backgrounds changed, then places into files pic based on their
+    # id number and the pic order info thats in its file directory
+
+def check_for_popup():
+    """ 
+    there are popups that may pop up randomly if using free version, this ensures that it removes
+    those popups then runs rest of code smoothly
+    """
+    try:
+        decline_pro_popup = driver.find_element('xpath', '//*[contains(@class, "flex items-center justify-center rounded-full p-2 outline-none transition duration-200 bg-black hover:bg-neutral-8 focus-visible:bg-neutral-8 active:bg-black focus-visible:ring-[3px] focus-visible:ring-accent-alpha-5")]')
+        driver.execute_script('arguments[0].click();', decline_pro_popup)
+    except NoSuchElementException:
+        pass
+
+def while_loop_script(element_tag, element, text_were_looking_for):
+    """ 
+    simple script that identifies an element and stays in there until it is found, like a WebDriverWait but smarter
+    """
+    continue_or_not = False
+    boolean_count = 0
+    while True:
+        if boolean_count == 15:
+            continue_or_not = True
+            return continue_or_not
+        boolean = False
+        clicking_bg_template = driver.find_elements(element_tag, element)
+        time.sleep(1)
+        boolean_count += 1
+        for template in clicking_bg_template:
+            if template.text == text_were_looking_for:
+                boolean = True
+                driver.execute_script('arguments[0].click();', template)
+                break
+        if boolean:
+            break
+
+def clicking_concrete_bg():
+    """ 
+    clicks the concrete background
+    """
+    while_loop_script('xpath', '//*[contains(@class, "text-sm font-medium leading-500 text-black")]', 'Background')
+    while_loop_script('xpath', '//*[contains(@class, "component-400")]', 'Concrete')
+
+    WebDriverWait(driver, 40).until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "group relative flex w-full appearance-none flex-col rounded-400 outline-none")]'))) 
+    concrete_selection = driver.find_elements('xpath', '//*[contains(@class, "group relative flex w-full appearance-none flex-col rounded-400 outline-none")]')
+    driver.execute_script('arguments[0].click();', concrete_selection[11])
+    
+def clicking_color_bg(picked_color, hex_color):
+    """ 
+    clicks on specific color background
+    """
+    WebDriverWait(driver, 30).until(EC.element_to_be_clickable(('xpath', '//*[contains(@d, "M19 11H13V5C13")]')))
+    expand_color_options = driver.find_element('xpath', '//*[contains(@d, "M19 11H13V5C13")]')
+    expand_color_options.click()
+
+    picking_the_color = driver.find_elements('xpath', '//*[contains(@class, "relative rounded-full box-border")]')
+    color_mapping = {
+        'Black': 1, 'White': 2,
+        'Dark Orange': 18, 'Orange': 17, 'Bright Orange': 16,
+        'Yellow': 15, 'Bright Yellow': 14, 'Lime Green': 13,
+        'Green': 12, 'Emerald': 11, 'Baby Blue': 10,
+        'Light Blue': 9, 'Blue': 8, 'Dark Blue': 7,
+        'Purple': 6, 'Light Purple': 5, 'Pink': 4
+    }
+    if picked_color in color_mapping:
+        color_index = color_mapping[picked_color]
+        driver.execute_script("arguments[0].click();", picking_the_color[color_index])
+
+    #Red, Gray and Dark Gray would have to be customed
+    #? maybe make customized preset color templates for user to choose
+    elif picked_color == 'Custom':
+        custom_color_picker = driver.find_elements('xpath', '//*[contains(@class, "absolute inset-")]')
+        driver.execute_script('arguments[0].click();', custom_color_picker[-1])
+        adjust_color = driver.find_element('xpath', '//*[contains(@id, "rc-editable-input")]')
+        for _ in range(6):
+            adjust_color.send_keys(Keys.BACK_SPACE)
+        adjust_color.send_keys(hex_color)
+
+def download_script(numba):
+    """ 
+    downloads the image we just edited, to the folder we created aboce in 
+    """
+    print(f'download script {numba}')
+    download_button = driver.find_element('xpath', '//*[contains(@class, "max-w-full truncate component-semi-strong-500 text-to-leading-500")]')
+    driver.execute_script('arguments[0].click();', download_button)
+    try:
+        WebDriverWait(driver, 40).until(EC.element_to_be_clickable(('css selector', '[class="component-strong-500 text-neutral-8"]')))
+    except:
+        pass
+    time.sleep(2)
+
+    try:
+        free_download_button = driver.find_elements('css selector', '[class="component-strong-500 text-neutral-8"]')
+        driver.execute_script('arguments[0].click();', free_download_button[0])
+        time.sleep(1)
+
+        try:
+            download_continue_button_free = driver.find_element('xpath', '//*[contains(@class, "max-w-full flex items-center justify-center h-12 content-to-edge-spacious-px-600")]')
+            driver.execute_script('arguments[0].click();', download_continue_button_free)
+
+        except Exception as e:
+            print(e)
+            traceback.print_exc()
+            print(' HERE MAY LIE YOU ISSUE WITH THE POSTER')
+            pass
+
+        time.sleep(5) #code to wait till download is done
+    except:
+        download_script(3)
+
+    check_for_popup()
+
+pic_images = []
+def removal_editer(the_image_link, use_color, picked_color, hex_color):
+    """ 
+    does the editing for the background for each image
+    """
+    print(the_image_link)
+    print('adding phto button')
+    #! alert text pops up right around here...
+    add_photo_button = WebDriverWait(driver, 10).until(EC.presence_of_element_located(('css selector', '[accept="image/jpeg,image/png,image/webp"]')))
+    add_photo_button.send_keys(the_image_link)
+
+    print('while loop we are having trouble with')
+    continue_boolean = while_loop_script('xpath', '//*[contains(@class, "truncate text-base font-medium capitalize")]', 'Background')
+    if continue_boolean:
+        print(f'ERROR FOR IMAGE {the_image_link}')
+    else:
+        check_for_popup()
+
+        print('clicking concrete bg')
+        if not use_color:
+            clicking_concrete_bg()
+        else:
+            clicking_color_bg(picked_color, hex_color)
+
+        #create a way where the person can choose the background they wish to have in this, using the same color graph or giving them options to choose from
+        #regardless, the color has the be the hex code
+
+
+        #moves the file from downloads to my destination folder
+        file_name_element = driver.find_element('css selector', '[name="template-name"]').get_attribute('value')
+        extracting_file_name = fr"C:\Users\Argel Arroyo\Downloads\{file_name_element}-PhotoRoom.jpg"
+        download_script(1)
+        
+        #this moves the file from recent downoads to the file of my choosing based on its path
+        print('move file ')
+        print(file_name_element)
+        print(extracting_file_name)
+        try:
+            shutil.move(extracting_file_name, DESTINATION_FILE_NAME)
+        except Exception as e:#FileNotFoundError
+            print(e)
+            traceback.print_exc()
+            download_script(2)
+            shutil.move(extracting_file_name, DESTINATION_FILE_NAME)
+
+        print('home reset button')
+        driver.get('https://app.photoroom.com/create')
+        print(' ')
+
+try:
+    create_file_path(DESTINATION_FILE_NAME, BASE_DIRECTORY, SUB_DIRECTORY)
+    removal_log_in('argelarroyo2001@gmail.com')
+    extracting_sql_results()
+except Exception as e:
+    print(e)
+    traceback.print_exc()
+# os.system("shutdown /s /t 1")
