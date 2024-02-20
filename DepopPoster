@@ -1,6 +1,5 @@
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import Select
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -27,7 +26,8 @@ def document_ready(driver):
 
 
 def start_up():
-    driver.find_element('xpath', '//*[@id="__next"]/div/div[3]/div[2]/button[2]').click()
+    WebDriverWait(driver, 10).until(EC.element_to_be_clickable(('xpath', '//*[@id="__next"]/div/div[3]/div[2]/button[2]'))).click()
+    # driver.find_element('xpath', '//*[@id="__next"]/div/div[3]/div[2]/button[2]')
     time.sleep(2)
     driver.find_element('xpath', '//*[@id="mainNavigation"]/li[4]/a').click()
     time.sleep(4)
@@ -52,26 +52,16 @@ def start_up():
     WebDriverWait(driver, 20).until(document_ready)
     time.sleep(8)
     sell_button = driver.find_element('xpath', '//*[contains(@class, "styles__NavLinkText-sc-")]')
-    sell_button.click()
-    sell_button.click()
+    driver.execute_script('arugments[0].click();', sell_button)
     list_item_button = WebDriverWait(driver, 20).until(EC.presence_of_element_located(('css selector', '[data-testid="sellerHubNavigation__listButton"]')))
-    list_item_button.click()
+    driver.execute_script('arugments[0].click();', list_item_button)
+
     
-def adding_pics(pic_time):
-    global pstart
-    time.sleep(1)
-    pictures = WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[@id="imageInput"]')))
-    driver.find_element('xpath', '//*[@id="imageInput"]').send_keys(str(image_list[pstart]))
-    pstart += 1
-    time.sleep(pic_time)
-    driver.find_element('xpath', '//*[@id="imageInput"]').send_keys(str(image_list[pstart]))
-    pstart += 1
-    time.sleep(pic_time)
-    driver.find_element('xpath', '//*[@id="imageInput"]').send_keys(str(image_list[pstart]))
-    pstart += 1
-    time.sleep(pic_time)
-    driver.find_element('xpath', '//*[@id="imageInput"]').send_keys(str(image_list[pstart]))
-    pstart += 1
+def adding_pics():
+    WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[@id="imageInput"]')))
+    for pstart, image in enumerate(image_list):
+        driver.find_element('xpath', '//*[@id="imageInput"]').send_keys(str(image[pstart]))
+        time.sleep(15)
 
 def picking_category_item(xxx, gender):
     global size_count
@@ -106,7 +96,7 @@ def picking_category_item(xxx, gender):
         if gender == 'Women':
             driver.execute_script("arguments[0].click();", main_category2[11])
         else:
-            driver.execute_script("arguments[0].click();", main_category2[0])       
+            driver.execute_script("arguments[0].click();", main_category2[0])
 
         time.sleep(2)
         diff_tops = driver.find_elements('xpath', "//*[contains(@class, 'select__option')]")
@@ -158,9 +148,7 @@ def pick_size_and_bodyfit(size):
     global there_is_error
     global size_drop_down
     global size_count
-    size_count = size
-    size_count = size_count.split('x')
-    size_count = size_count[0]    
+    size_count = size.split('x')[0]
     print('size')
     print(size_count)
 
@@ -530,7 +518,7 @@ def depop_poster():
             
             location()
 
-            adding_pics(15) 
+            adding_pics() 
 
             selecting_condition(condition_list[count])
 
