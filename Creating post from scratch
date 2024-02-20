@@ -1,83 +1,66 @@
 
 #use this code after you have your pictures organized in the files then this puts them all into excel where you can 
 #then create the title and the price for it
+#! eventually this code will be replaced using the gui i replaced will will include following changes
+#! - adjust the count == ? to however many pics are in the posts, to make dynamic
+#! - the directory path
+
 #START OF CODE
+import os
 import numpy as np
 import os
-from os import listdir
-from PIL import Image
-import numpy as np
-import sys
-import os
-import csv
 import xlsxwriter
-import openpyxl
-from openpyxl import load_workbook
-from openpyxl.utils import get_column_letter
-from openpyxl.drawing.image import Image
-
-filename = "PicFile1.xlsx"
-def create_workbook(filename):
-    workbook = xlsxwriter.Workbook(filename)
-    worksheet_pics = workbook.add_worksheet('pics')
-
-def column_customization():
-    worksheet_pics.set_default_row(40)
-
-def load_workbook(filename):
-    wb = load_workbook(filename)
-    ws = wb.worksheets[0]
-    ws_tables = []
-    for table in ws._talbes:
-        ws_tables.append(table)
-        print(table.name, table.ref)
 
 image_list = []
-pic_folder = "Pic_folder"
-pic_file = "folder12"
-folder_dirr = "D:\\Selenium_Python2\\" + pic_folder + "\\" + pic_file
-for images in os.listdir(folder_dirr):
-    if (images.endswith(".JPG")):
-        imge = folder_dirr + "\\" + images
-        image_list.append(imge)
+PIC_FOLDER = "Pic_folder"
+PIC_FILE = "folder14" #! for this would need to create a folder to extract the pictures from the program
+FOLDER_DIRECTORY = f"D:\\Selenium_python2\\{PIC_FOLDER}\\{PIC_FILE}"
 
-item_count = 0
-def inserting_images():
-    global item_count
+
+
+FILENAME = "PicFile14.xlsx"
+
+def create_worksheet_and_inserting_images():
+    """ 
+    creates a worksheet with given FILENAME,
+    extracts images from given folder
+    inserts images into our already created worksheet that we just created
+    """
+    #! create our workbook
+    workbook = xlsxwriter.Workbook(FILENAME)#need to change the picfile number everytime to create a new worksheet
+    worksheet_pics = workbook.add_worksheet('pics')
+    worksheet_pics.set_default_row(100)
+    worksheet_pics.set_column('A:A', 15)
+
+    #! load images into a list to upload
+    for images in os.listdir(FOLDER_DIRECTORY):
+        image_path = os.path.join(FOLDER_DIRECTORY, images)
+        if not image_path.endswith(".MOV"):
+            image_list.append(image_path)
+        else:
+            os.remove(image_path)
+            
+    #! upload images into this creates worksheet
+    item_count = 0
     count = 0
     image_row = 0
     image_column = 0
-    #need to change the picfile number everytime to create a new worksheet
-    wb = xlsxwriter.Workbook("PicFile13.xlsx")
-    ws_pics = wb.add_worksheet()
+    
     for img in image_list:
         if count == 3:
-            ws_pics.insert_image(image_row, image_column, img, {'x_scale': 0.04, 'y_scale': 0.04}) 
+            worksheet_pics.insert_image(image_row, image_column, img, {'x_scale': 0.1, 'y_scale': 0.1})
             count = 0
             image_column = 0
             image_row += 1
             item_count += 1
+            item_count += 1
         else:
-            ws_pics.insert_image(image_row, image_column, img, {'x_scale': 0.04, 'y_scale': 0.04}) 
+            worksheet_pics.insert_image(image_row, image_column, img, {'x_scale': 0.2, 'y_scale': 0.2})
             count += 1
             image_column += 1
-    wb.close()
+    workbook.close()
+    
+create_worksheet_and_inserting_images()
 
-def inserting_images_as_sheet():
-    count = 0
-    image_row = 0
-    wb = openpyxl.load_workbook('PicFile1.xlsx')
-    ws = wb.create_sheet('Pic File')
-    for img in image_list:
-        if count == 4:
-            count = 0
-            image_row += 1
-        image = Image(img)
-        column_letter = get_column_letter(count + 1)
-        ws.add_image(image, f"{column_letter}{image_row}")
-        count += 1
-    wb.save('PicFile1.xlsx')
-
-inserting_images()
 
 
