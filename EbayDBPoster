@@ -1,12 +1,13 @@
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import Select
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.common.by import By
 from selenium.webdriver import ActionChains
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.action_chains import ActionChains
+from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import ElementClickInterceptedException
+
 
 import time
 import sqlite3
@@ -21,7 +22,8 @@ import traceback
 import re
 from colorama import Fore, Style
 import keyboard
-from selenium.common.exceptions import TimeoutException
+from icecream import ic
+
 
 #this import above gives me access to info from text_parser
 #muse use and identify where imports are neede
@@ -42,7 +44,7 @@ total_brand_list = {
     'Nike': ['nike', 'nik', 'acg', 'nike '],
     'J. Galt': ['j. galt'],
     'Fox Racing': ['fox', 'foxracing'],
-    'NASCAR': ['intimidator', 'nascar', 'busch', 'matt', 'nascar', 'tony', 'dale', 'jimmy', 'johnson', 'jimmie', 'fireball roberts', 'carl long', 'fred lorenzen', 'david reutimann', 'richard childress', 'ned jarrett', 'kyle petty', 'ricky rudd', 'adam petty', 'joe weatherly', 'donnie allison', 'dave marcis', 'tim richmond', 'bobby labonte', 'ricky craven', 'kyle busch', 'geoff bodine', 'bobby allison', 'joey logano', 'junior johnson', 'todd bodine', 'kenny wallace', 'carl edwards', 'denny hamlin', 'jamie mcmurray', 'benny parsons', 'kevin harvick', 'lee petty', 'jeff burton', 'david pearson', 'kurt busch', 'kenseth', 'terry labonte', 'michael waltrip', 'kasey kahne', 'earnhardt', 'cale yarborough', 'alan kulwicki', 'tony stewart', 'jimmie johnson', 'rusty wallace', 'darrell waltrip', 'davey allison', 'dale jarrett', 'mark martin', 'jeff gordon', 'bill elliott', 'dale earnhardt', 'richard petty'],
+    'Chase': ['intimidator', 'nascar', 'busch', 'matt', 'nascar', 'tony', 'dale', 'jimmy', 'johnson', 'jimmie', 'fireball roberts', 'carl long', 'fred lorenzen', 'david reutimann', 'richard childress', 'ned jarrett', 'kyle petty', 'ricky rudd', 'adam petty', 'joe weatherly', 'donnie allison', 'dave marcis', 'tim richmond', 'bobby labonte', 'ricky craven', 'kyle busch', 'geoff bodine', 'bobby allison', 'joey logano', 'junior johnson', 'todd bodine', 'kenny wallace', 'carl edwards', 'denny hamlin', 'jamie mcmurray', 'benny parsons', 'kevin harvick', 'lee petty', 'jeff burton', 'david pearson', 'kurt busch', 'kenseth', 'terry labonte', 'michael waltrip', 'kasey kahne', 'earnhardt', 'cale yarborough', 'alan kulwicki', 'tony stewart', 'jimmie johnson', 'rusty wallace', 'darrell waltrip', 'davey allison', 'dale jarrett', 'mark martin', 'jeff gordon', 'bill elliott', 'dale earnhardt', 'richard petty'],
     
     'Harley Davidson': ['harley', 'davidson'],
     'Anti Social Social Club': ['anti', 'social', 'social club', 'social clubs'],
@@ -160,7 +162,7 @@ general_colors = {
     "white": (255, 255, 255),
     "gray": (128, 128, 128),# yes 2 different gray, one is classified as silver
     "gray": (192, 192, 192),
-    "gold": (255, 215, 0),
+    "yellow": (255, 215, 0),
     "beige": (245, 245, 220)
 }
 nhl_teams = {
@@ -318,7 +320,7 @@ nascar_list = ['intimidator', 'nascar','fireball roberts', 'dale jarrett', 'mark
                'michael waltrip', 'kasey kahne', 'earnhardt', 'cale yarborough', 'alan kulwicki', 'tony stewart', 'jimmie johnson', 'rusty wallace', 
                'darrell waltrip', 'davey allison', 'richard petty']
 
-sports_list = ['NHL', 'NFL', 'NBA', 'MLB', 'Soccer']
+sports_list = ['NHL', 'NFL', 'NBA', 'MLB', 'Soccer', 'Baseball', 'Football']
 decade_list = ['90', '80', '70', '60', '50'] 
 excluded_terms = ['kid', 'youth', 'vintage']
 tags_to_signify_new = ['new', 'nwt']
@@ -327,7 +329,6 @@ def hex_to_rgb(hex_color):
     """
     just returns the hex to rgb value, but is used in congruence with the color_difference, closest_general_color and color_identifier function
     """
-    # print(f'hex to rgb {webcolors.hex_to_rgb(hex_color)}')
     return webcolors.hex_to_rgb(hex_color)
 
 def color_difference(color1, color2):
@@ -403,7 +404,7 @@ def start_up(account_name):
         acc_pw = 'Fernanda*1979'
  #sometimes it does captcha then sign in, sometimes sign in then captcha
 
-    WebDriverWait(driver, 40).until(EC.presence_of_element_located(('css selector', '[id="userid"]')))
+    WebDriverWait(driver, 60).until(EC.presence_of_element_located(('css selector', '[id="userid"]')))
     username_entry = driver.find_elements('css selector', '[id="userid"]')
     username_entry[0].send_keys(acc_name) 
     time.sleep(2)
@@ -436,8 +437,8 @@ def extracting_pics(the_id_num):
     folder_dirr = 'D:\Selenium_python2\Pic_folder\BackgroundPics'
     for images in os.listdir(folder_dirr):
         if (images.startswith(image_i)):
-            imge = folder_dirr + "\\" + images
-            image_list.append(imge)  
+            imge = os.path.join(folder_dirr, images)
+            image_list.append(imge)
     return image_list[0]
 
 def adding_pics(the_id_num):
@@ -446,14 +447,9 @@ def adding_pics(the_id_num):
     """
     extracting_pics(the_id_num)
     WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[@id="fehelix-uploader"]')))
-    pic_time = 3
-    pstart = 0       
-    for i in range(len(image_list)):
-        driver.find_element('xpath', '//*[@id="fehelix-uploader"]').send_keys(str(image_list[pstart]))
-        pstart += 1
-        time.sleep(pic_time)
-    time.sleep(1)
-    pic_time = 8
+    for p_start in enumerate(0, len(image_list)):
+        driver.find_element('xpath', '//*[@id="fehelix-uploader"]').send_keys(str(image_list[p_start]))
+        time.sleep(3)
     WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[@id="fehelix-uploader"]')))
 
 def picking_condition(cond, title_of_item):
@@ -470,7 +466,6 @@ def picking_condition(cond, title_of_item):
             used_cond_int = 3
         else:
             used_cond_int = 1
-        time.sleep(1)
 
         if any(new_word in title_of_item.lower() for new_word in tags_to_signify_new) or 'new' in cond:
             conditions[0].click()
@@ -501,9 +496,7 @@ def inserting_correct_category(our_og_category, edit_or_no, category_text, the_g
     else:
         #enter the category we have given, the backspace is the refresh the page, since sometimes doesnt refresh if we just enter it in super quick
         category_enter_value = driver.find_element('xpath', '//*[contains(@aria-label, "Enter a category value")]')
-        category_enter_value.send_keys(our_og_category)
-        category_enter_value.send_keys(Keys.BACKSPACE)
-        category_enter_value.send_keys(our_og_category[-1])
+        category_enter_value.send_keys(our_og_category, Keys.BACKSPACE, our_og_category[-1])
         time.sleep(2)
 
         #then with this we now choose the options and get the text results
@@ -516,8 +509,6 @@ def category_checker(current_given_category, what_we_found, the_gender):
     this just checks if the given category that is provided is already the correct one, and skips it so that we dont do any unnecessary work and 
     overcomplicate this program
     """
-    print(f' what we found {what_we_found}')
-    print(f' current_given_category: {current_given_category}')
     if what_we_found == 'jersey' or what_we_found == 'nascar':
         category_qualification = what_we_found in current_given_category
     else:
@@ -526,7 +517,6 @@ def category_checker(current_given_category, what_we_found, the_gender):
         should_we_continue = False
     else:
         should_we_continue = True
-    print(f' should we continue {should_we_continue}')
     return should_we_continue
 
 def inserting_and_selecting_jersey_category(current_title, yes_or_no, category_text, the_gender):
@@ -536,6 +526,10 @@ def inserting_and_selecting_jersey_category(current_title, yes_or_no, category_t
     """
     for sport in sports_list:
         if sport.lower() in current_title:
+            if sport.lower() == 'baseball':
+                sport = 'MLB'
+            if sport.lower() == 'football':
+                sport = 'NFL'
             sports_category = f'jersey {sport}'
             break
 
@@ -543,10 +537,13 @@ def inserting_and_selecting_jersey_category(current_title, yes_or_no, category_t
     if continue_with_script is False:
         pass
     else:
-        inserting_correct_category(sports_category, yes_or_no, category_text, the_gender)
-        #this portion is jerseys own spin of select_correct_category
-        category_options = driver.find_elements('xpath', '//*[contains(@class, "field__label")]')
-        driver.execute_script("arguments[0].click();", category_options[0])
+        try:
+            inserting_correct_category(sports_category, yes_or_no, category_text, the_gender)
+            #this portion is jerseys own spin of select_correct_category
+            category_options = driver.find_elements('xpath', '//*[contains(@class, "field__label")]')
+            driver.execute_script("arguments[0].click();", category_options[0])
+        except UnboundLocalError:
+            pass
 
 def inserting_and_selecting_vintage_category(gen, cat, yes_or_no, category_text):
     """
@@ -604,7 +601,6 @@ def selecting_correct_category(cat, gen):
             and re.search(rf'\b{gen}\b', opt_text) is not None
         ):
             driver.execute_script("arguments[0].click();", opt)
-            print('options has been clicked options has been clicked options has been clicked')
             time.sleep(3)
             break
 
@@ -613,10 +609,13 @@ def clicking_suggested_category():
     simply clicks on first suggested category,
     this is only used if all other failes
     """
-    category_edit_button = driver.find_element('xpath', '//*[contains(@aria-label, "Selected category")]')
-    category_edit_button.click()
-    WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "se-field-card__content-value")]')))
-    click_on_suggested_category = driver.find_element('xpath', '//*[contains(@class, "se-field-card__content-value")]')
+    try:
+        category_edit_button = driver.find_element('xpath', '//*[contains(@aria-label, "Selected category")]')
+        category_edit_button.click()
+    except ElementClickInterceptedException:
+        pass
+    # WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "se-field-card__content-value")]')))
+    click_on_suggested_category = WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "se-field-card__content-value")]')))
     driver.execute_script("arguments[0].click();", click_on_suggested_category)
 
 def identifying_gender(the_title):
@@ -632,113 +631,105 @@ def identifying_gender(the_title):
         the_gender = 'men'
     return the_gender
 
-def adjusting_category(the_category, the_gender, the_title):
+#! I can make this code a lot nicer
+def adjusting_category(the_category, item_men_or_wmn, the_title):
     """
     this adjust the category if needs adjusting, it checks the tite for any sign of the word women
     or wmn, then with that adjust the category as needed
     """
     the_title = the_title.lower().split(' ')
     the_gender = identifying_gender(the_title)
-
     list_of_categories = ['jacket', 'sweater']
     #multiple categories that we will change ahead of time to better fit the ebay category system
-    #! create more filters for this as we go on, check all the possible categories i will be using and make sure they work
-    if any(cat_list in the_title for cat_list in list_of_categories):
-        the_category = next(cat.title() for cat in list_of_categories if cat in the_title)
-    elif the_category == 'joggers' or the_category == 'sweatpants':
-        the_category = 'Activewear Pants'
-    elif the_category == 'sneakers' or the_category == 'trainers':
-        the_category = 'Athletic Shoes' 
-    elif the_category == 'flip flops & slides':
-        the_category = 'Sandals'
-    elif the_category == 'jumpers':
-        the_category = 'Hoodie'
-    elif the_category == 'cardigan':
-        the_category = 'Sweaters'
-    elif the_category == 'bags & purses':
-        the_category = 'Bags'
-    elif the_category == 'Other':
-        the_category = ' '
-    elif any('overall' in word for word in the_title):
-        the_category = 'Jeans'
-
-    # need ot create a big list of other categoires , cant just put everything else as  " "
-    try:
-        #this is if the category pop up menu is alredy up and we still have to change it
-        #without clicking on itthen this means we must choose a category
-        WebDriverWait(driver, 5).until(EC.presence_of_element_located(('xpath', '//*[contains(@aria-label, "Enter a category value")]')))
-        nascar_item = [word for word in nascar_list if word in the_title]
-        if nascar_item:
-            inserting_and_selecting_nascar_category('no', 'noCategoryText')
-        elif ('vintage' in the_title or any(decade in the_title for decade in decade_list)) and the_category != 'Bags': #TODO create a code to make vtg also signal to move on
-            inserting_and_selecting_vintage_category(the_gender, the_category, 'no', 'noCategoryText')
-        elif 'jersey' in the_title:
-            inserting_and_selecting_jersey_category(the_title, 'no', 'noCategoryText')   #TODO fix current category text
-        else:
-            if the_category == ' ':
-                print(' suggested suggested suggested suggested suggested suggested suggested suggested suggested suggested suggested')
-                clicking_suggested_category() #TODO need to figure something out if there is no suggest category, some way to look within the text
-                #TODO to find the category within it
-            else:
-                select_yes_or_no = inserting_correct_category(the_category, 'no', 'noCategoryText', the_gender) #!this should = False
-                print(f' the category {the_category}')
-                print(f' select yes or no {select_yes_or_no}')
-                if select_yes_or_no:
-                    print("**********************************************************")
-                    try:
-                        selecting_correct_category(the_category, the_gender)
-                    except Exception as e:
-                        # print(e)
-                        # traceback.print_exc()
-                        clicking_suggested_category()
-                    
-
-    except TimeoutException:
-        #category is already chosen and we must make sure that the category is the right category
-        #which is most likely already true since ebay recommended system very good, but we can still adjust if needed
-        category_edit_button = driver.find_element('xpath', '//*[contains(@aria-label, "Selected category")]')
-        current_category_text = category_edit_button.text.lower()
-        if (the_category.lower() in current_category_text) and re.search(rf'\b{the_gender}\b', current_category_text) is not None:
-            print('category selected is already the correct one, move onto the next')
-            pass
-        else:
-            print('need to change category 2 need to change category 2 need to change category 2need to change category 2')
-            nascar_item = [word for word in nascar_list if word in the_title]
-            if nascar_item:
-                inserting_and_selecting_nascar_category('yes', current_category_text)
+    #! create more filters for this as we go on, check all the possible categories i will be using and make sure they workr
+    if item_men_or_wmn == 'Kids':
+        print('clicking_suggested_category')
+        clicking_suggested_category()
+    else:
+            
+        if any(cat_list in the_title for cat_list in list_of_categories):
+            the_category = next(cat.title() for cat in list_of_categories if cat in the_title)
+        elif the_category == 'joggers' or the_category == 'sweatpants':
+            the_category = 'Activewear Pants'
+        elif the_category == 'sneakers' or the_category == 'trainers':
+            the_category = 'Athletic Shoes' 
+        elif the_category == 'flip flops & slides':
+            the_category = 'Sandals'
+        elif the_category == 'jumpers':
+            the_category = 'Hoodie'
+        elif the_category == 'cardigans':
+            the_category = 'Sweaters'
+        elif the_category == 'bags & purses':
+            the_category = 'Bags'
+        elif the_category == 't-shirts' and the_gender == 'women':
+            the_category = 'Tops'
+        elif any('overall' in word for word in the_title):
+            the_category = 'Jeans'
+        # need ot create a big list of other categoires , cant just put everything else as  " "
+        try:
+            #this is if the category pop up menu is alredy up and we still have to change it
+            #without clicking on itthen this means we must choose a category
+            WebDriverWait(driver, 5).until(EC.presence_of_element_located(('xpath', '//*[contains(@aria-label, "Enter a category value")]')))
+            if any(word in the_title for word in nascar_list):
+                inserting_and_selecting_nascar_category('no', 'noCategoryText', the_gender)
+            elif ('vintage' in the_title or any(decade in the_title for decade in decade_list)) and the_category not in ['bags', 'hoodie', 'other']: #TODO create a code to make vtg also signal to move on
+                inserting_and_selecting_vintage_category(the_gender, the_category, 'no', 'noCategoryText')
             elif 'jersey' in the_title:
-                inserting_and_selecting_jersey_category(the_title, 'yes', current_category_text, the_gender)
-            elif ('vintage' in the_title or any(decade in the_title for decade in decade_list)) and the_category != 'Bags':
-                inserting_and_selecting_vintage_category(the_gender, the_category, 'yes', current_category_text)
-            else:  #, then we assume that it is just a normal piece of clothing, and from there, then we are able to just proceed within men's clothing
-                if the_category.lower() in clothing_bottom:
-                    category_value = clothing_bottom
-                elif the_category.lower() in clothing_tops:
-                    category_value = clothing_tops
-                elif the_category.lower() in clothing_accessories:
-                    category_value = clothing_accessories
+                inserting_and_selecting_jersey_category(the_title, 'no', 'noCategoryText', the_gender)   #TODO fix current category text
+            else:
+                if the_category == ' ':
+                    clicking_suggested_category() #TODO need to figure something out if there is no suggest category, some way to look within the text
+                    #TODO to find the category within it
                 else:
-                    category_value = clothing_tops
-
-                if (
-                    any(category_val.lower() in current_category_text for category_val in category_value)
-                    and all(term not in current_category_text for term in excluded_terms) #!makes sure none of the excluded terms are in the category
-                    and re.search(rf'\b{the_gender}\b', current_category_text) is not None #!makes sure the genders are correct
-                ): #! if the info is already all correct, then it just moves on to the next part of the overall script
-                    pass
-                
-                else: #! the it changes the category to the correct one
-                    print('###############################################')
-                    time.sleep(2)
-                    WebDriverWait(driver, 20).until(EC.presence_of_element_located(('xpath', '//*[contains(@aria-label, "Selected category")]')))
-                    if the_category == " ":
-                        pass
-                    else:
-                        print('need to change category 2 need to change category 2 need to change category 2need to change category 2')
-                        select_yes_or_no = inserting_correct_category(the_category, 'yes', current_category_text, the_gender)
-                        print(f' select yes or no {select_yes_or_no}')
-                        if select_yes_or_no:
+                    select_yes_or_no = inserting_correct_category(the_category, 'no', 'noCategoryText', the_gender) #!this should = False
+                    if select_yes_or_no:
+                        try:
                             selecting_correct_category(the_category, the_gender)
+                        except Exception as e:
+                            # print(e)
+                            # traceback.print_exc()
+                            clicking_suggested_category()
+
+        except TimeoutException:
+            #category is already chosen and we must make sure that the category is the right category
+            #which is most likely already true since ebay recommended system very good, but we can still adjust if needed
+            category_edit_button = driver.find_element('xpath', '//*[contains(@aria-label, "Selected category")]')
+            current_category_text = category_edit_button.text.lower()
+            if (the_category.lower() in current_category_text) and re.search(rf'\b{the_gender}\b', current_category_text) is not None:
+                pass
+            else:
+                if any(word in the_title for word in nascar_list):
+                    inserting_and_selecting_nascar_category('yes', current_category_text, the_gender)
+                elif ('vintage' in the_title or any(decade in the_title for decade in decade_list)) and the_category not in ['bags', 'hoodie', 'other']:
+                    inserting_and_selecting_vintage_category(the_gender, the_category, 'yes', current_category_text)                    
+                elif 'jersey' in the_title:
+                    inserting_and_selecting_jersey_category(the_title, 'yes', current_category_text, the_gender)
+                else:  #, then we assume that it is just a normal piece of clothing, and from there, then we are able to just proceed within men's clothing
+                    if the_category.lower() in clothing_bottom:
+                        category_value = clothing_bottom
+                    elif the_category.lower() in clothing_tops:
+                        category_value = clothing_tops
+                    elif the_category.lower() in clothing_accessories:
+                        category_value = clothing_accessories
+                    else:
+                        category_value = clothing_tops
+
+                    if (
+                        any(category_val.lower() in current_category_text for category_val in category_value)
+                        and all(term not in current_category_text for term in excluded_terms) #!makes sure none of the excluded terms are in the category
+                        and re.search(rf'\b{the_gender}\b', current_category_text) is not None #!makes sure the genders are correct
+                    ): #! if the info is already all correct, then it just moves on to the next part of the overall script
+                        pass
+
+                    else: #! the it changes the category to the correct one
+                        time.sleep(2)
+                        WebDriverWait(driver, 20).until(EC.presence_of_element_located(('xpath', '//*[contains(@aria-label, "Selected category")]')))
+                        if the_category == " ":
+                            pass
+                        else:
+                            select_yes_or_no = inserting_correct_category(the_category, 'yes', current_category_text, the_gender)
+                            if select_yes_or_no:
+                                selecting_correct_category(the_category, the_gender)
 
 def continue_wo_match():
     """
@@ -764,7 +755,7 @@ def frequently_selected_options(options):
     elif options == 'one':
         driver.execute_script('arguments[0].click();', freq_selected_options[0])
 
-    #this clicks off the dropdown to continue to the next search 
+    #this clicks off the dropdown to continue to the next search
     driver.find_element('xpath', '//*[contains(@class, "aspects-category-radix__title")]').click()
     time.sleep(3)
 
@@ -777,7 +768,10 @@ def find_team_value(search_title, team_dict):
             return value
 
 def clicking_off_dropdown_menu(the_filter_count):
-    global post_is_draft
+    """
+    this just clicks off the dropdown menu when clicking filters
+    """
+    global post_is_draft, filter_count
     click_off_dropdown_menu = driver.find_element('xpath', '//*[contains(@class, "aspects-category-radix__title")]')
     click_off_dropdown_menu.click()
     the_filter_count += 1
@@ -809,7 +803,7 @@ def sharpening_specifications(the_size, the_color, the_department, the_title, th
             #this click onto the dropdown menu to show the resultsF
             driver.execute_script('arguments[0].click();', unchosen_filters[filter_count])
 
-            frequently_selected_one_options = ['Sleeve Length', 'Season']
+            frequently_selected_one_options = ['Sleeve Length', 'Season', 'Model', 'Release Year']
             frequently_selected_all_option = ['Theme', 'Features', 'Look', 'Performance/Activity']
             
             if filter_text == 'Size Type':
@@ -825,36 +819,52 @@ def sharpening_specifications(the_size, the_color, the_department, the_title, th
                         the_value = 'Plus'
                     else:
                         the_value = 'Big & Tall'
-
-            elif filter_text == 'Size' or filter_text == 'Size (Men\'s)':
-                the_size = the_size.replace('"', '')
-                #this identifies if the size is a number and transforms the number to the letter value in dictionary above
-                for letter, sizes in waist_size_to_letter.items():
-                    if the_size in sizes:
-                        the_size = letter
-                        break
-                if the_size == 'XXL':
-                    the_value = '2XL'
-                elif the_size == 'XXXL':
-                    the_value = '3XL'
-                elif the_size == 'XXXXL':
-                    the_value = 'One Size' 
-                elif the_size == ' ':
-                    the_value = 'One Size'
                 else:
-                    the_value = the_size
-            
+                    try:
+                        frequently_selected_options('one')
+                    except TimeoutException:
+                        clicking_off_dropdown_menu(filter_count)
+                    continue
+
+            elif filter_text == 'Size' or filter_text == 'Size (Men\'s)' or filter_text == 'US Shoe Size':
+                size_value = False
+                the_size = the_size.replace('"', '').replace('US ', '').strip()
+                category_options_check = driver.find_elements('css selector', '[class="field__label"]')
+                for cat_text in category_options_check:
+                    if cat_text.text == the_size:
+                        print(cat_text.text)
+                        size_value = True
+                        the_value = the_size
+                        break
+                    
+                if size_value is False:
+                    print('SIZE VALUE IS FALSE')
+                    #this identifies if the size is a number and transforms the number to the letter value in dictionary above
+                    for letter, sizes in waist_size_to_letter.items():
+                        if the_size in sizes:
+                            the_size = letter
+                            break
+                    if the_size == 'XXL':
+                        the_value = '2XL'
+                    elif the_size == 'XXXL':
+                        the_value = '3XL'
+                    elif the_size == 'XXXXL' or the_size == ' ':
+                        the_value = 'One Size'
+                    else:
+                        frequently_selected_options('one')
+
             elif filter_text == 'Inseam':
                 pattern = r'\d{2}x\d{2}'
                 found_match = False
                 for ind_word in the_title:
-                    inseam_match = re.search(pattern, ind_word)
+                    ic(ind_word)
+                    inseam_match = re.search(pattern, ind_word.strip())
                     if inseam_match:
                         inseam_match = inseam_match.group()
                         inseam_match = re.split(r'[xX]', inseam_match)
                         the_value = inseam_match[1] + ' in'
                         found_match = True
-                        break 
+                        break
                 if not found_match:
                     try:
                         frequently_selected_options('one')
@@ -895,6 +905,7 @@ def sharpening_specifications(the_size, the_color, the_department, the_title, th
                     continue
 
             elif filter_text == 'Style':
+                style_shorts_list = ['cargo', 'sweat', 'bermuda', 'chino']
                 style_bag_list = ['backpack', 'duffle', 'tote', 'clutch', 'satchel', 'crossbody']
                 style_jeans_list = ['ankle', 'bootcut', 'capri', 'cropped', 'flared', 'khakis', 'paperbag', 'skinny', 'straight', 'tapered', 'wide-leg']
                 button_options = driver.find_elements('xpath', '//*[contains(@class, "field__label")]')
@@ -928,7 +939,42 @@ def sharpening_specifications(the_size, the_color, the_department, the_title, th
                             else:
                                 clicking_off_dropdown_menu(filter_count)
                                 continue
+                        elif the_category == 'hoodies' or the_category == 'sweatshirts':
+                            if 'jacket' in the_title or 'zip' in the_title:
+                                the_value = 'Full Zip'
+                            elif 'hoodie' in the_title:
+                                the_value = 'Pullover'
+                            elif 'cardigan' in the_title:
+                                the_value = 'Cardigan'
+                            else:
+                                the_value = 'Pullover'
                                 
+                        elif the_category == 'shorts':
+                            if any(style_shorts in the_title for style_shorts in style_shorts_list):
+                                the_value = next(style_shorts.title() for style_shorts in style_shorts_list if style_shorts in the_title)
+                            else:
+                                clicking_off_dropdown_menu(filter_count)
+                                continue
+                        elif 'letterman' in the_title or 'letter' in the_title:
+                            the_value = 'Varsity Jacket'
+                        elif 'bomber' in the_title:
+                            the_value = 'Bomber Jacket'
+                        elif 'puffer' in the_title:
+                            the_value = 'Puffer Jacket'
+                        elif 'motorcycle' in the_title:
+                            the_value = 'Motorcycle Jacket'
+                        elif 'parka' in the_title:
+                            the_value = 'Parka'
+                        elif 'quilt' in the_title:
+                            the_value = 'Quilted'
+                        elif 'windbreaker' in the_title:
+                            the_value = 'Windbreaker'
+                        elif 'trench' in the_title:
+                            the_value = 'Trench Coat'
+                        else:
+                            clicking_off_dropdown_menu(filter_count)
+                            continue
+
             elif filter_text == 'Style Code':
                 category_texts = driver.find_elements('xpath', '//*[contains(@class, "field__label")]')
                 for category_text in category_texts:
@@ -970,7 +1016,7 @@ def sharpening_specifications(the_size, the_color, the_department, the_title, th
                         clicking_off_dropdown_menu(filter_count)
                     continue
 
-            elif filter_text == 'Outer Shell Material' or filter_text == 'Material':
+            elif filter_text == 'Outer Shell Material' or filter_text == 'Material' or filter_text == 'Upper Material':
                 material_list = ['cotton', 'leather', 'wool', 'silk', 'cashmere', 'poncho']
                 try:
                     frequently_selected_options('one')
@@ -982,21 +1028,20 @@ def sharpening_specifications(the_size, the_color, the_department, the_title, th
                             the_value = 'Polyester'
                         elif filter_text == 'Material':
                             the_value = 'Cotton'
-                    
+
             elif filter_text == 'Product':
                 if 'jersey' in the_title:
                     the_value = 'Jersey'
 
             elif filter_text == 'Team':
-                category_edit_button = driver.find_element('xpath', '//*[contains(@aria-label, "Selected category")]')
-                current_category_text = category_edit_button.text
-                if 'NHL' in current_category_text:
+                team_category_text = driver.find_element('xpath', '//*[contains(@aria-label, "Selected category")]').text
+                if 'NHL' in team_category_text:
                     the_team_dic = nhl_teams
-                elif 'NBA' in current_category_text:
+                elif 'NBA' in team_category_text:
                     the_team_dic = nba_teams
-                elif 'NFL' in current_category_text:
+                elif 'NFL' in team_category_text:
                     the_team_dic = nfl_teams
-                elif 'MLB' in current_category_text:
+                elif 'MLB' in team_category_text:
                     the_team_dic = mlb_teams
                 the_value = find_team_value(the_title, the_team_dic)#issue with extracting proper team value, maybe issue with lower() upper()??
 
@@ -1014,47 +1059,167 @@ def sharpening_specifications(the_size, the_color, the_department, the_title, th
             elif filter_text == 'Gender':
                 the_value = identifying_gender(the_title)
 
-            time.sleep(2)
+            time.sleep(1)
             try:
                 inserting_value_text = driver.find_element('css selector', '[aria-label="Search results"]')
                 inserting_value_text.send_keys(the_value)
             except:
-                # print(e)
-                # traceback.print_exc()
                 continue
             time.sleep(1)
 
             #since we already searched for the value above, this identifies and clicks the correct value
-            # print(f' {filter_text}  {the_value}')
-            clicking_value_type = driver.find_elements('css selector', f'[value^="{the_value}"]')
-            try:
-                #looks for the correct value in this
-                driver.execute_script('arguments[0].click();', clicking_value_type[1])
-            except Exception as e:
-                # print(e)
-                # traceback.print_exc()
-                #but if correct value isnt specified, will just go to frequently_selected_options()
-                frequently_selected_options('one')
+            freq_selected = True
+            
+            category_options_check = driver.find_elements('css selector', '[class="field__label"]')
+            for cat_options in category_options_check:
+                if the_value.lower() == cat_options.text.lower():
+                    clicking_value_type = driver.find_elements('css selector', f'[value="{cat_options.text}"]')
+                    print(len(clicking_value_type))
+                    driver.execute_script('arguments[0].click();', clicking_value_type[-1])
+                    freq_selected = False
+                    break
+            if freq_selected:
+                for _ in range(len(the_value)):
+                    inserting_value_text.send_keys(Keys.BACKSPACE)
+                try:
+                    frequently_selected_options('one')
+                except:
+                    print('POST IS DRAFT IS TRUE!!!!')
+                    post_is_draft = True
+
             #clicks off the dropdown menu
             click_off_dropdown_menu = driver.find_element('xpath', '//*[contains(@class, "aspects-category-radix__title")]')
             driver.execute_script('arguments[0].click();', click_off_dropdown_menu)
             time.sleep(2)
-    except: #this means that there is no unfiltered categories to fill in
-        # print(ex)
-        # traceback.print_exc()
+    except Exception as e: #this means that there is no unfiltered categories to fill in
+        print(e)
+        traceback.print_exc()
+        
         pass
 
+def template_name_identifier(my_template_name):
+    """ 
+    clicks the description based on the template name we have given it and have extracted
+    """
+    got_template = False
+    template_names = driver.find_elements('xpath', '//*[contains(@class, "dropdown__option template-name")]')
+    for template in template_names:
+        if template.text == my_template_name:
+            ic('TEMPLATE TEXT IS TRUE')
+            action.move_to_element(template).perform()
+            time.sleep(3)
+            insert = driver.find_elements('css selector', '[role="menuitem"]')
+            for i_id ,ins in enumerate(insert):
+                if ins.text == 'Insert':
+                    got_template = True
+                    insert = insert[i_id]
+                    break
+    return insert, got_template
+    
+def our_created_description(my_template_name):
+    """
+    this will automatically click the description template based on the name we give it
+    """
+    custom_templates_button = driver.find_element('xpath', '//*[contains(@class, "menu-button__button btn btn--form")]')
+    driver.execute_script("arguments[0].scrollIntoView(true)", custom_templates_button)
+    time.sleep(1)
+
+    driver.execute_script("arguments[0].click();", custom_templates_button)
+    time.sleep(1)
+    
+    insert, template_bool = template_name_identifier(my_template_name)
+    if template_bool:
+        try:
+            action.move_to_element(insert).perform()
+        except AttributeError:
+            insert, _ = template_name_identifier(my_template_name)
+            action.move_to_element(insert).perform()
+        driver.execute_script("arguments[0].click()", insert)
+        
+        #! clicks off the description to officially load the description
+        time.sleep(2)
+        description_click_off_element = driver.find_elements('css selector', '[class="textual-display"]')
+        for desc in description_click_off_element:
+            if desc.text.lower() == 'description':
+                driver.execute_script("arguments[0].click()", desc)
+                break
+    else:
+        ic('Please make sure you have your template already created or the template name already exists')
+
+    # template_names = driver.find_elements('xpath', '//*[contains(@class, "dropdown__option template-name")]')
+    # for template in template_names:
+    #     if template.text == my_template_name:
+    #         action.move_to_element(template).perform()
+    #         time.sleep(1)
+    #         insert = driver.find_elements('xpath', '//*[contains(@role, "menuitem")]')
+    #         for i_id ,ins in enumerate(insert):
+    #             if ins.text == 'Insert':
+    #                 insert = insert[i_id]
+    #                 break
+
+    #         time.sleep(1.5)
+    #         try:
+    #             action.move_to_element(insert).perform()
+    #         except AttributeError as a:
+    #             print(a)
+    #             traceback.print_exc()
+                
+    #             template_names = driver.find_elements('xpath', '//*[contains(@class, "dropdown__option template-name")]')
+    #             for template in template_names:
+    #                 if template.text == my_template_name:
+    #                     action.move_to_element(template).perform()
+    #                     time.sleep(1)
+    #                     insert = driver.find_elements('xpath', '//*[contains(@role, "menuitem")]')
+    #                     for i_id ,ins in enumerate(insert):
+    #                         if ins.text == 'Insert':
+    #                             insert = insert[i_id]
+    #                             break
+    #         time.sleep(.5)
+    #         try:
+    #             driver.execute_script("arguments[0].click()", insert)
+    #         except AttributeError:
+    #             action.move_to_element(insert).perform()
+    #             driver.execute_script("arguments[0].click()", insert)
+    #         time.sleep(1)
+    #     else:
+    #         logging.debug('Please make sure you have your template already created or the template name already exists')
+    #clicking off of description after selected
+
+
+def ai_generated_description():
+    """ 
+    this will let ai generate a description
+    #! not working right now since its asking for a review, that we cant send, 
+    """
+    ai_description = driver.find_element('xpath', '//*[contains(@class, "ai-description-button")]')
+    driver.execute_script("arguments[0].scrollIntoView(true)", ai_description)
+    driver.execute_script('arguments[0].click();', ai_description)
+    time.sleep(4)
+    
 def clicking_select_all():
     """
-    just click if any specifications are missed, does this when first entering the page to add photos to item
+    clicks the recommended specifications given to use by ebay algorithm
     """
-    # select all applications to list faster
-    checkbox_control_options = ['Brand', 'Type', 'Color', 'Style']
-    select_all_buttons = driver.find_elements('xpath', '//*[contains(@class, "checkbox__control")]')
+    select_all_buttons = driver.find_elements('css selector', '[name="extracted-aspects"]')
+    print(f' select all buttons {select_all_buttons}')
     for buttons in select_all_buttons:
-        if buttons.get_attribute('value') in checkbox_control_options:
-            driver.execute_script("arguments[0].click();", buttons)
-            break
+        driver.execute_script("arguments[0].click();", buttons)
+
+def listing_button(the_post_is_draft):
+    """
+    determines whether or not to save as a draft or not
+    """
+    list_it_button = driver.find_elements('xpath', '//*[contains(@class, "btn btn--large")]')
+    if the_post_is_draft is False:
+        list_it_iterator = 0
+    elif the_post_is_draft is True:
+        print('NO POST IS DRAFT AT ALL -------------------------------')
+        list_it_iterator = 1
+    load_data_clicking_button = driver.find_element('css selector', '[class="textual-display summary__fee-header"]')
+    driver.execute_script("arguments[0].scrollIntoView(true)",list_it_button[list_it_iterator])
+    driver.execute_script('arguments[0].click();', load_data_clicking_button)
+    time.sleep(1)
+    driver.execute_script('arguments[0].click();', list_it_button[list_it_iterator])
 
 def moving_onto_next_listing(find_free):
     """
@@ -1066,24 +1231,36 @@ def moving_onto_next_listing(find_free):
     if find_free == 'Yes': #! the free listing number location has changed, so now have to go to overview, and search for the number there, and rather than just l
         #! searching for it every time, I can just search for it once then use the decrement operator to just lower that number every time
         WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "numbers")]')))
-        free_listing_numbers_finder = driver.find_elements('xpath', '//*[contains(@class, "numbers")]')
-        FREE_LISTING_NUMBERS = free_listing_numbers_finder[-1].text
+        FREE_LISTING_NUMBERS = driver.find_elements('xpath', '//*[contains(@class, "numbers")]')[-1].text
         WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "me-fake-button   fake-btn fake-btn--primary")]')))
         single_listing = driver.find_elements('xpath', '//*[contains(@class, "me-fake-button   fake-btn fake-btn--primary")]')
         driver.execute_script('arguments[0].click();', single_listing[0])
-        print(FREE_LISTING_NUMBERS)
 
-        # WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "textual-display image-banner-card__action fake-btn fake-btn--fluid fake-btn--primary")]')))
-        # single_listing_part_2 = driver.find_elements('xpath', '//*[contains(@class, "textual-display image-banner-card__action fake-btn fake-btn--fluid fake-btn--primary")]')
-        # driver.execute_script('arguments[0].click();', single_listing_part_2[0])
+    try:
+        WebDriverWait(driver, 30).until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "fake-menu-button__button btn btn--primary")]')))
+        create_listing_button = driver.find_element('xpath', '//*[contains(@class, "fake-menu-button__button btn btn--primary")]')
+        create_listing_button.click()
 
-    WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "fake-menu-button__button btn btn--primary")]')))
-    create_listing_button = driver.find_element('xpath', '//*[contains(@class, "fake-menu-button__button btn btn--primary")]')
-    create_listing_button.click()
+        singe_listing = driver.find_element('xpath', '//*[contains(@class, "fake-menu-button__item")]')
+        singe_listing.click()
+    except:
+        pass
 
-    singe_listing = driver.find_element('xpath', '//*[contains(@class, "fake-menu-button__item")]')
-    singe_listing.click()
-    print('+++++++++++++++++++++++++++++++++++++++++++++++++++')
+def clicking_off(text_box_title):
+    """
+    this clicks off the display to basicallly enter the value into ebay listing
+    """
+    text_boxes = driver.find_elements('css selector', '[class="textual-display"]')
+    print(len(text_boxes))
+    for text_box in text_boxes:
+        if text_box.text == text_box_title:
+            print(f' clicking off on {text_box.text}')
+            driver.execute_script("arguments[0].scrollIntoView(true)", text_box)
+            time.sleep(2)
+            driver.execute_script('arguments[0].click();', text_box)
+            print(f'??????????????????????? clicking {text_box_title} text box')
+            time.sleep(2)
+            break    
 
 def inserting_price(the_price):
     """
@@ -1091,6 +1268,7 @@ def inserting_price(the_price):
     compares price from database with recommended price from ebay and chooses higher number
     """
     #checking if format is in buy now rather than auction
+    print(' ')
     price_input = driver.find_element('css selector', '[name="price"]')
     driver.execute_script("arguments[0].scrollIntoView(true)", price_input)
     start_price_checker = driver.find_elements('xpath', '//*[contains(@name, "startPrice")]')
@@ -1106,35 +1284,41 @@ def inserting_price(the_price):
                         driver.execute_script("arguments[0].click()", li)
                         time.sleep(2)
 
-    #inserting price
+    #identifying ebays given price
     WebDriverWait(driver, 80).until(EC.presence_of_element_located(('css selector', '[name="price"]')))
     price_input = driver.find_element('css selector', '[name="price"]')
-    current_listed_price = price_input.get_attribute('value')
-
-    #checks to see which number is higher, my price, or the estimated price, and goes with higher number
     try:
-        if (float(the_price) - 3) > float(current_listed_price):
-            for i in range(7):
+        ebay_estimated_price = driver.find_element('css selector', '[class="metric-value overflow-ellipsis"]').text.replace('$', '')
+
+        #checks to see which number is higher, my price, or the estimated price, and goes with higher number
+        if ebay_estimated_price == '':
+            pass
+        elif (float(the_price)) > float(ebay_estimated_price):
+            for _ in range(7):
                 price_input.send_keys(Keys.BACKSPACE)
-            time.sleep(.5)
-    except:
-        pass
-    price_input.send_keys(the_price)
-    time.sleep(4)
-################################################################
-################################################################################################################################
-################################################################################################################################
-################################################################################################################################
-################################################################
-################################################################
-#start number = 1
-LAST_NUMBER = 257
- #211################################################################
-################################################################################################################################
-################################################################################################################################
-################################################################################################################################
-################################################################
-#identify how many free items  you get to post and dont go over that amount
+            time.sleep(6)
+            the_price = str(int(the_price))
+            price_input.send_keys(the_price, Keys.TAB)
+            print(f'the price {the_price}')
+            time.sleep(2)
+        elif (float(the_price)) > float(ebay_estimated_price):
+            for _ in range(7):
+                price_input.send_keys(Keys.BACKSPACE)
+            time.sleep(6)
+            the_price = str(int(ebay_estimated_price))
+            print('$$$$$$$$$$$$$$$$$$$$$$$$$$/////////////////////////this is sending the estimated ')
+            price_input.send_keys(the_price, Keys.TAB)
+    except: 
+        #!this except only work if ebay doenst estimate a price, meaning  that we will compare estimated price vs our price
+        the_price = str(int(the_price))
+        driver.execute_script("arguments[0].scrollIntoView(true)", price_input)
+        time.sleep(2)
+        price_input.send_keys(the_price, Keys.TAB)
+        print(f'the price {the_price}')
+        time.sleep(2)
+
+    time.sleep(2)
+    #this clicks off of the price to insert it officially
 
 def ebay_poster(my_template_name):
     global post_is_draft
@@ -1147,46 +1331,36 @@ def ebay_poster(my_template_name):
 
     start_up('rv')# rv, other
     moving_onto_next_listing('Yes')
-    id_range = cursor.execute('SELECT id FROM dp_inv_isellclothes2001 ORDER BY id DESC LIMIT 1;').fetchone()
-    id_range = id_range[0]
+    id_range = cursor.execute('SELECT id FROM dp_inv_isellclothes2001 ORDER BY id DESC LIMIT 1;').fetchone()[0]
     for id_num in range(id_range):
         if id_num < LAST_NUMBER:
-        
             continue
-        if FREE_LISTING_NUMBERS == 0:
-            logging.debug('no more free listings, wait till next month')
+        if int(FREE_LISTING_NUMBERS) == 0:
+            print('NO MORE FREE LISTINGS')
+            print('NO MORE FREE LISTINGS')
             break
         db_query = cursor.execute(f"SELECT dp_title, dp_price, dp_category, dp_color1, dp_size, dp_condition, dp_men_or_wmn, dp_gen_category FROM dp_inv_isellclothes2001 WHERE id = {id_num};").fetchone()
 
         try:
-            title = db_query[0].lower() 
-            title = title.replace('like new', 'Slightly Used') 
+            title = db_query[0].lower()
+            title = title.replace('like new', 'Slightly Used').replace('velcro', '').title()
             #!need to make more phrases, for words like new, nwt
-            title = title.title()
             price = db_query[1]
-            # print(price)
-            category = db_query[2]
-            category = category.lower()
-            # print('////' + category + '////')
+            category = db_query[2].lower()
             color = db_query[3]
-            # print(color)
             size = db_query[4]
-            # print(f'////{size}////')
             condition = db_query[5]
-            # print(condition)
-            gender = db_query[6]
-            gender = gender.replace('swear', '').lower()
-            # print(gender)
+            gender = db_query[6].replace('swear', '').lower()
         except TypeError:
             continue
-        
+
         post_is_draft = False
-        print(f' free listings left {FREE_LISTING_NUMBERS}')
+        print(f' FREE_LISTING_NUMBERS {FREE_LISTING_NUMBERS}')
         print(f'adding title {str(id_num)} {title}')
         WebDriverWait(driver, 20).until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "textbox__control textbox__control--fluid")]')))
         title_text_box = driver.find_element('xpath', '//*[contains(@class, "textbox__control textbox__control--fluid")]')
         title_text_box.send_keys(title)
-        time.sleep(3)
+        time.sleep(1)
 
         #title search button
         driver.find_element('xpath', '//*[contains(@class, "keyword-suggestion__button btn btn--primary")]').click()
@@ -1206,48 +1380,14 @@ def ebay_poster(my_template_name):
             got_it_button[0].click()
 
         adding_pics(id_num)
-        
+
         clicking_select_all()
 
         #general description
         #! this commented code is to use a general description
-        # custom_templates_button = driver.find_element('xpath', '//*[contains(@class, "menu-button__button btn btn--form")]')
-        # driver.execute_script("arguments[0].scrollIntoView(true)", custom_templates_button)
-        # time.sleep(1)
+        # our_created_description(my_template_name)
+        ai_generated_description()
 
-        # driver.execute_script("arguments[0].click();", custom_templates_button)
-        # time.sleep(1)
-
-        #!this lets ai create a description for you
-        ai_description = driver.find_element('xpath', '//*[contains(@class, "ai-description-button")]')
-        driver.execute_script("arguments[0].scrollIntoView(true)", ai_description)
-        driver.execute_script('arguments[0].click();', ai_description)
-
-        #with this make sure that it is clear that the user already has the template created with the name specified
-        template_names = driver.find_elements('xpath', '//*[contains(@class, "dropdown__option template-name")]')
-        for template in template_names:
-            if template.text == my_template_name:
-                action.move_to_element(template).perform()
-
-                time.sleep(1)
-                insert = driver.find_elements('xpath', '//*[contains(@role, "menuitem")]')
-                for i_id ,ins in enumerate(insert):
-                    ins_text = ins.text
-                    if ins_text == 'Insert':
-                        insert = insert[i_id]
-                        break
-
-                time.sleep(1.5)
-                action.move_to_element(insert).perform()
-                time.sleep(.5)
-                try:
-                    driver.execute_script("arguments[0].click()", insert)
-                except AttributeError:
-                    action.move_to_element(insert).perform()
-                    driver.execute_script("arguments[0].click()", insert)
-                time.sleep(1)
-            else:
-                logging.debug('Please make sure you have your template already created')
         inserting_price(price)
 
         try:
@@ -1256,35 +1396,27 @@ def ebay_poster(my_template_name):
             driver.execute_script('arguments[0].click()', shipping_apply_button)
             print(f'{Fore.CYAN}this has clicked shipping')
         except Exception as e:
-            # print(e)
-            # traceback.print_exc()
             pass
 
         #checking for lack of shipping description
         minor_weight = driver.find_element('css selector', '[name="minorWeight"]')
         minor_weight = minor_weight.get_attribute('value')
         package_information = driver.find_elements('css selector', '[name^="package"]')
-        package_dimensions = ['7', '10', '4']
+        package_dimensions = ['7', '11', '4']
         if minor_weight == '0':
             minor_weight.send_keys('15')
             for p, pack in enumerate(package_information):
                 pack.send_keys(package_dimensions)[p]
 
+        #wait for pictures to finish loading
+        WebDriverWait(driver, 15).until(EC.invisibility_of_element_located(('css selector', '[aria-label="Loading file"]')))
+
         # #list it button
-        list_it_button = driver.find_elements('xpath', '//*[contains(@class, "btn btn--large")]')
-        if post_is_draft is False:
-            list_it_iterator = 0
-        elif post_is_draft is True:
-            list_it_iterator = 1
-        print(f'list it operator {list_it_iterator}')
-        driver.execute_script("arguments[0].scrollIntoView(true)",list_it_button[list_it_iterator])
-        time.sleep(1)
-        driver.execute_script('arguments[0].click();', list_it_button[list_it_iterator])
-        print('list it button has been clicked')
+        listing_button(post_is_draft)
         #done with listing button
         try:
             if post_is_draft is False:
-                WebDriverWait(driver, 8).until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "fake-btn fake-btn--primary")]')))
+                WebDriverWait(driver, 15).until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "fake-btn fake-btn--primary")]')))
                 done_button = driver.find_element('xpath', '//*[contains(@class, "fake-btn fake-btn--primary")]')
                 driver.execute_script("arguments[0].click()", done_button)
 
@@ -1293,70 +1425,61 @@ def ebay_poster(my_template_name):
             print('overview page')
             moving_onto_next_listing('No')
         except TimeoutException:
-            print('ERROR WITH THIS OPERATION TIMEOUT')
-            #this is specifically to cath dupliacate listings and move on from there
-            WebDriverWait(driver, 5).until(EC.presence_of_element_located(('xpath',' //*[contains(@class, "page-notice__header")]')))
-            text_displays = driver.find_elements('xpath', '//*[contains(@class, "textual-display")]')
-            for the_text in text_displays:
-                print(the_text.text)
-                if the_text.text == 'duplicate listing':
-                    logging.info('DUPLICATE LISTING DUPLICATE LISTING DUPLICATE LISTING')
-                    save_draft_button = driver.find_element('css selector', '[aria-label="Save for later"]')
-                    driver.execute_script("arguments[0].scrollIntoView(true)", save_draft_button)
-                    driver.execute_script('arguments[0].click()', save_draft_button)
-                    moving_onto_next_listing('No')
-                    break
-                elif the_text.text == 'Description':
-                    logging.debug('goes into description')
-                    try:
-                        WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath',' //*[contains(@class, "se-rte__ai-description-feedback-link fake-link")]')))
-                        provide_help_ai_feedback_button = driver.find_element('xpath',' //*[contains(@class, "se-rte__ai-description-feedback-link fake-link")]')
-                        driver.execute_script("arguments[0].scrollIntoView(true)", provide_help_ai_feedback_button)
-                        driver.execute_script('arguments[0].click();',provide_help_ai_feedback_button)
-                        
-                        WebDriverWait(driver, 5).until(EC.presence_of_element_located(('css selector', '[for="0_star_5"]') ))
-                        ai_description_feedback = driver.find_elements('css selector', '[for="0_star_5"]') 
-                        driver.execute_script('arguments[0].click()', ai_description_feedback[-1])
-                        
-                        # WebDriverWait(driver, 10).until(EC.presence_of_element_located(('css selector', '[id="submitFdbk"]')))
-                        time.sleep(5)
-                        # five_star_ai_desc_feedback = driver.find_element('css selector', '[for="0_star_5"]')
-                        # driver.execute_script('arguments[0].click()', five_star_ai_desc_feedback)
-                        
-                        feedback_send_button = driver.find_element('xpath', '//*[contains(@class, "btn btn--primary btn-no-shadow")]')
-                        driver.execute_script('arguments[0].click()', feedback_send_button)
-                        # is not identifying the pop up feedback menu, figure this issue out, maybe just refocus on the new pop up menu somehow?
-                        
-                        exit_outof_feedback = driver.find_element('xpath', '//*[contains(@class, "icon-btn lightbox-dialog__close")]')
-                        driver.execute_script('arguments[0].click()', exit_outof_feedback)
-                    except IndexError:
-                        print('THERE IS AN INDEX ERROR FOR AI DESCRIPTION BUTTON')
-                        ai_desc_button = driver.find_element('xpath', '//*[contains(@class, "se-rte__ai-description-button btn")]')
-                        driver.execute_script("arguments[0].scrollIntoView(true)", ai_desc_button)
-                        driver.execute_script('arguments[0].click();',ai_desc_button)
-                        time.sleep(1)
-                        driver.execute_script('arguments[0].click();',ai_desc_button)
-                        time.sleep(2)
-                        
-                        #listing button
-                        list_it_button = driver.find_elements('xpath', '//*[contains(@class, "btn btn--large")]')
-                        if post_is_draft is False:
-                            list_it_iterator = 0
-                        elif post_is_draft is True:
-                            list_it_iterator = 1
-                        driver.execute_script("arguments[0].scrollIntoView(true)",list_it_button[list_it_iterator])
-                        time.sleep(1)
-                        driver.execute_script('arguments[0].click();', list_it_button[list_it_iterator])
+            try:
+                
+                #this is specifically to cath dupliacate listings and move on from there
+                WebDriverWait(driver, 15).until(EC.presence_of_element_located(('xpath',' //*[contains(@class, "page-notice__header")]')))
+                text_displays = driver.find_elements('xpath', '//*[contains(@class, "textual-display")]')
+                for the_text in text_displays:
+                    if the_text.text == 'duplicate listing':
+                        logging.info('DUPLICATE LISTING DUPLICATE LISTING DUPLICATE LISTING')
+                        post_is_draft = True
+                        break
 
-                    moving_onto_next_listing('No')
+                    elif the_text.text == 'Photos':
+                        adding_pics(id_num)
+
+                    elif the_text.text == 'Item specifics':
+                        #TODO create an option for this so that if the post is already set as false, then it just goes straight
+                        #TODo into a draft and avoids this
+                        print('the item specifics is wrong')
+                        # empty_specification = driver.find_elements('css selector', '[aria-invalid="true"]')
+                        # for empty in empty_specification:
+                        #     empty_type = empty.get_attribute('aria-label')
+                        #     print(empty_type)
+                        # clicking_select_all()
+                        continue
+
+                    elif the_text.text == 'Buy It Now price':
+                        print(price)
+                        inserting_price(price)
+                        ic('INSERTED PRICE INSERTED PRICE')
+
+                    elif the_text.text == 'Description':
+                        ic('FIX THE FUCKING DESCRIPTION')
+                        # our_created_description(my_template_name)
+                        # ai_generated_description()
+                        post_is_draft = True
+                        #!this code is to provide feedback but cant get it to work, so will bypass this
+                    
+
+                listing_button(post_is_draft)
+                moving_onto_next_listing('No')
+            except Exception as e:
+                ic('ERROR WITH ENDING!!!')
+                print(e)
+                traceback.print_exc()
+                
+
+LAST_NUMBER = 573
 
 try:
     ebay_poster('General Description')
-    print('MOVING ONTO THE NEXT LISTING NEXT LISTING NEXT LISTINGS')
 except Exception as e:
     traceback.print_exc()
     print(e)
-
+print(f'id number {id_num}')
+print('this code is finished')
 
 #need to crate a database table for this, this should be easy, literally just need to add the exact same info the the og dp table you are referring to to the database,
 #all that needs to be adjusted is...
@@ -1365,4 +1488,3 @@ except Exception as e:
 #
 #make code for duplicates to just move on to next post
 #make code for deleting all drafts
-
