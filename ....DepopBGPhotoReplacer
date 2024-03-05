@@ -1,0 +1,232 @@
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import time
+import sqlite3
+import traceback
+import shutil
+import os
+import requests
+import json
+
+chrome_options = Options()
+chrome_options.add_experimental_option("detach", True)
+driver = webdriver.Chrome("D:\\Selenium_python2\\chromedriver.exe", chrome_options=chrome_options)
+
+driver.get('https://www.depop.com/')
+
+connection = sqlite3.connect('D:\\Selenium_python2\\Depop_database.db')
+cursor = connection.cursor()
+
+account_name_2 = '_realvintage'
+account_name = 'isellclothes2001'
+
+total_accounts = [account_name, account_name_2]
+table_name = 'dp_inv_' + total_accounts[0]
+table_name_2 = 'dp_inv_' + total_accounts[1]
+
+bg_email = 'argelarroyo2001@gmail.com'
+bg_password = 'Fernanda*123'
+
+id_range_num = cursor.execute(f'SELECT id FROM {table_name} ORDER BY id DESC LIMIT 1;').fetchone()[0]
+
+
+
+def dp_sign_in(which_account):
+    """
+    signs into depop account to perform switches
+    """
+    time.sleep(1)
+    try:
+        #Ecookies button
+        driver.find_element('xpath', '//*[@id="__next"]/div/div[2]/div[2]/button[2]').click()
+    except:
+        pass
+    time.sleep(1.5)
+    #log in button
+    log_in_button = driver.find_elements('xpath', '//*[contains(@class, "LogInExpButton-sc")]')
+    log_in_button[-1].click()
+    time.sleep(2)
+    if which_account == '_realvintage':
+        account_email = 'argelarroyo2001@gmail.com'
+        account_password = 'Pineappleguy305'
+    elif which_account == 'isellclothes2001':
+        account_email = 'isellclothes2001@gmail.com'
+        account_password = 'Fernanda*1979' 
+
+    username = WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[@id="username"]')))
+    username.send_keys(account_email)
+    password = driver.find_element('xpath', '//*[@id="password"]')
+    password.send_keys(account_password)
+    time.sleep(1)
+    driver.find_element('xpath', '//*[contains(@class, "LoginButton-sc")]').click()
+    time.sleep(3)
+    
+    
+table_images_for_query = []
+table_image_len_for_query = []
+table_unique_title_for_query = []
+remove_solds_from_active = []
+
+
+def dp_switch_images_starter(last_number):
+    """
+    switches the old images with the new images with the backgrounds
+    """
+    global dp_title, i
+    print(table_name)
+
+    # for i in range(5):
+    for i in range(id_range_num):
+        if i < last_number:
+            continue
+        print('starting ' +str(i))
+        # row_result = cursor.execute(f'SELECT dp_title, dp_url_list, dp_images FROM {table_name} WHERE id = {id_num};').fetchone()
+        the_dp_info = cursor.execute(f'SELECT dp_title, dp_url_list FROM {table_name} WHERE id = {i}').fetchone()
+        #im using isellclothes2001 inevntory db so i would need to locate the match based on the title then extract the url from the other list
+        try:
+            dp_url_link = the_dp_info[1]
+            dp_title = the_dp_info[0].replace("'", "''")
+            table_unique_title_for_query.append(dp_title)
+            print(dp_url_link)
+        except Exception as e:
+            print(e)
+            continue
+        #if this is true, means there are 2 accounts or more, and if so, then would be able to 
+
+        if account_i > 0:
+            print(dp_title)
+            other_account_url = cursor.execute(f"SELECT {table_name_2}.dp_url_list FROM {table_name_2} INNER JOIN {table_name} ON {table_name_2}.dp_title = {table_name}.dp_title WHERE {table_name_2}.dp_title = '{dp_title}';").fetchone()
+            
+            #create a code to identify any differences btwn the two tables.
+            print(other_account_url)
+            if other_account_url is None:
+                continue
+            dp_switch_images(other_account_url, i)
+        else:
+            print('1st account')
+            dp_switch_images(dp_url_link, i)
+        driver.close()
+        driver.switch_to.window(driver.window_handles[-1])
+        print('ending ' +str(i))
+
+def replacing_db_pic_cell_info(the_table_name):
+    combined_query = zip(table_images_for_query, table_image_len_for_query, table_unique_title_for_query)
+    combined_query_list = list(combined_query)
+
+    combined_sold_query = zip(remove_solds_from_active)
+    combined_sold_query_list = list(combined_sold_query)
+
+    sql_query = f"UPDATE {the_table_name} SET dp_images = ?, dp_image_len = ? WHERE dp_title = ?;"
+    cursor.executemany(sql_query, combined_query_list)
+
+    try:
+        sql_delete_query = f"DELETE FROM {the_table_name} WHERE id = ?;"
+        cursor.executemany(sql_delete_query, combined_sold_query_list)
+    except:
+        pass
+
+    connection.commit()
+    connection.close()
+
+
+def dp_switch_images(the_url_link, id_num):
+    global images, len_of_images
+    #opens new link
+    
+    print(the_url_link[0])
+    driver.execute_script(f"window.open('{the_url_link[0]}');")
+    driver.switch_to.window(driver.window_handles[-1])
+
+    #edits post
+    WebDriverWait(driver, 40).until(EC.element_to_be_clickable(('css selector', '[data-testid="button__edit"]')))
+    #identify if sold or not
+    sold_button = driver.find_elements('xpath', '//*[contains(@class, "styles__ButtonBlock-sc")]')
+    print('sold button length ' + str(len(sold_button)))
+    if len(sold_button) > 2:
+        remove_solds_from_active.append(id_num)
+    else:
+        post_edit_button = driver.find_elements('css selector', '[data-testid="button__edit"]')
+        driver.execute_script("arguments[0].click();", post_edit_button[0])
+
+        #code to wait for page to load
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "ImageInput-styles__Delete-sc")]')))
+
+        #removing the old pics
+        deleting_pictures_button = driver.find_elements('xpath', '//*[contains(@class, "ImageInput-styles__Delete-sc")]')
+        print('len deleting pictures:', len(deleting_pictures_button))
+        for pics in deleting_pictures_button:
+            driver.execute_script("arguments[0].click();", pics)
+
+        time.sleep(2)
+        #extracting the new images
+        image_i = str(id_num) + '_'
+        image_list = []
+        folder_dirr = 'D:\Selenium_python2\Pic_folder\BackgroundPics'
+        for images in os.listdir(folder_dirr):
+            if images.startswith(image_i):
+                imge = folder_dirr + "\\" + images
+                image_list.append(imge)
+
+        #inserts the new images
+        pstart = 0
+        for _ in range(len(image_list)):
+            driver.find_element('xpath', '//*[@id="imageInput"]').send_keys(str(image_list[pstart]))
+            pstart += 1
+            time.sleep(15)
+
+        #saves changes then continues to next iteration
+        save_changes_button = driver.find_element('xpath', '//*[contains(@class, "styles__SaveButton-sc")]')
+        driver.execute_script("arguments[0].click();", save_changes_button)
+
+        try:
+            WebDriverWait(driver, 15).until(EC.element_to_be_clickable(('css selector', '[data-testid="button__edit"]')))
+        except:
+            brand_selector_element = driver.find_element('xpath', '//*[@id="listingBrands__select"]')
+            brand_selector_element.send_keys('Other', Keys.DOWN, Keys.DOWN, Keys.ENTER)
+            time.sleep(1)
+            save_changes_button = driver.find_element('xpath', '//*[contains(@class, "styles__SaveButton-sc")]')
+            driver.execute_script("arguments[0].click();", save_changes_button)
+            WebDriverWait(driver, 15).until(EC.element_to_be_clickable(('css selector', '[data-testid="button__edit"]')))
+
+        script_tag = driver.find_element('css selector', "[data-testid='meta-schema__json-ld']")
+        script_content = script_tag.get_attribute("innerHTML")
+        data = script_content.encode('ascii', 'ignore').decode('unicode_escape')
+        data = json.loads(script_content)
+        images = data['image']
+        len_of_images = int(len(images))
+        images = '; '.join(images)
+        time.sleep(3)
+        
+        table_images_for_query.append(images)
+        table_image_len_for_query.append(len_of_images)
+
+
+# uploading_pics_to_file() # STEP 1 :::this works great already, doesnt add duplicates
+
+# extracting_sql_results()# STEP 2 :::this works great too, this includes the removal editer button to change
+#all the images to include those with backgrounds
+
+#----------------------------------------------------------------
+
+LAST_NUMBER = 756
+for account_i, account in enumerate(total_accounts):
+
+    print(account)
+    
+    if account_i == 0:
+        pass
+    else:
+        the_table_name = 'dp_inv_' + account
+        try:
+            print(' account starting ' + str(account_i))
+            print(' account starting ' + account)
+            dp_sign_in(account)
+            dp_switch_images_starter(LAST_NUMBER) 
+            replacing_db_pic_cell_info(the_table_name)
+        except Exception as e:
+            traceback.print_exc()
+            print(e)
+            replacing_db_pic_cell_info(the_table_name)
