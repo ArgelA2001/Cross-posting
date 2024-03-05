@@ -1,0 +1,190 @@
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import Select
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.chrome.options import Options
+import time
+import sqlite3
+import traceback
+import re
+
+
+chrome_options = Options()
+chrome_options.add_experimental_option("detach", True)
+driver = webdriver.Chrome("D:\\Selenium_python2\\chromedriver.exe", chrome_options=chrome_options)
+driver.get("https://www.grailed.com/sell/sold") 
+wait = WebDriverWait(driver, 30)
+
+gr_sold_titles = []
+gr_sold_date = []
+gr_sold_revenue = []
+
+# things i need to find still
+gr_sold_brands = []
+gr_sold_url = []
+gr_sold_seller = []
+gr_sold_buyer = []
+gr_sold_num_of_pics = []
+gr_sold_pic_urls = []
+gr_sold_mow = []
+gr_sold_gen_cat = []
+gr_sold_cat = []
+gr_sold_condition = []
+gr_sold_size = []
+gr_sold_color = []
+gr_sold_refunded_or_not = []
+gr_sold_likes = []
+
+def gr_start_up():
+    time.sleep(2)
+    log_in_button = driver.find_element('css selector', '[data-cy="login-btn"]')
+    log_in_button.click()
+    time.sleep(3)
+    log_in_button2 = driver.find_element('css selector', '[data-cy="login-with-email"]')
+    log_in_button2.click()
+    time.sleep(2)
+    google_email = driver.find_element('xpath', '//*[@id="email"]')
+    google_email.send_keys("argelarroyo2001@gmail.com")
+    driver.find_element('xpath', '//*[@id="password"]').send_keys('Pineappleguy305')
+    time.sleep(1)
+    driver.find_element('css selector', '[data-cy="auth-login-submit"]').click()
+    time.sleep(4)
+    # driver.maximize_window()
+    specific_element = wait.until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "-heart-wrapper")]')))
+    time.sleep(5)
+
+def gr_solds():
+    pic_i = 0
+    
+    sell_menu_button = driver.find_element('xpath', '//*[contains(@class, "SellButton-module__buttonText__")]')
+    sell_menu_button.click()
+    try:
+        sell_menu_button.click()
+    except:
+        pass
+    print('sell button clicked')
+    time.sleep(6)
+    specific_element = wait.until(EC.presence_of_element_located(('xpath', '//*[contains(@class, "Link_link__")]')))
+    sold_menu_button = driver.find_elements('xpath', '//*[contains(@class, "Link_link__")]')
+    sold_menu_button[1].click()
+    time.sleep(2)
+    sold_pic_buttons = driver.find_elements('xpath', '//*[contains(@class, "Image_image__")]')
+    sold_title_buttons = driver.find_elements('xpath', '//*[contains(@class, "Listing_title_")]')
+    date_extraction = driver.find_elements('xpath', '//*[contains(@class, "Detail_value__")]')
+    time.sleep(3)
+    transcation_card = driver.find_elements('xpath', '//*[contains(@class, "Transaction_transactionCard__")]')
+
+    for i, card in enumerate(transcation_card):
+        try:
+            gr_sold_rev = card.find_elements('xpath', './/*[contains(@class, "Payment_money__")]')
+            gr_sold_rev = gr_sold_rev[4].text
+            print(gr_sold_rev)
+            gr_sold_revenue.append(gr_sold_rev)
+        except:
+            pass
+        card_text = card.get_attribute('textContent') 
+
+        if 'Refunded' in card_text:
+            gr_sold_refunded_or_not.append('Refunded') #
+            gr_sold_titles.append('')#
+            gr_sold_date.append('')#
+            gr_sold_revenue.append('')#
+            gr_sold_brands.append('')#
+            gr_sold_url.append('')#
+            gr_sold_seller.append('')#
+            gr_sold_buyer.append('')#
+            gr_sold_num_of_pics.append('')#
+            gr_sold_pic_urls.append('')#
+            gr_sold_mow.append('')#
+            gr_sold_gen_cat.append('')#
+            gr_sold_cat.append('')#
+            gr_sold_condition.append('')#
+            gr_sold_size.append('')#
+            gr_sold_color.append('')#
+            gr_sold_likes.append('')#
+            break
+        else:
+            gr_sold_refunded_or_not.append('Sold')
+        
+        gr_seller = driver.find_element('xpath', '//*[contains(@class, "UserContainer_username__")]')
+        print(gr_seller.text)
+        gr_sold_seller.append(gr_seller.text)
+
+        gr_buyer = driver.find_elements('xpath', '//*[contains(@class, "Buyer_link__")]')
+        print(gr_buyer[i].text)
+        gr_sold_buyer.append(gr_buyer[i].text)
+
+        try:
+            date_text = date_extraction[int((i)) * 7].text
+            gr_sold_date.append(date_text)
+        except:
+            print('date dont work')
+            
+        image_href = driver.find_elements('xpath', '//*[contains(@class, "Link inherit")]')
+        image_link = image_href[i].get_attribute('href')
+        driver.execute_script("window.open('{}');".format(image_link))
+        time.sleep(1)
+        driver.switch_to.window(driver.window_handles[1])
+        time.sleep(2)
+        
+        size_color_condition = driver.find_elements('xpath', '//*[contains(@class, "Details_value__")]')
+        print(size_color_condition[0].text)
+        print(size_color_condition[1].text)
+        print(size_color_condition[2].text)
+        gr_sold_size.append(size_color_condition[0].text)
+        gr_sold_color.append(size_color_condition[1].text)
+        gr_sold_condition.append(size_color_condition[2].text)
+
+        gr_likes = driver.find_element('xpath', '//*[contains(@class, "Likes_count__")]')
+        print(gr_likes.text)
+        gr_sold_likes.append(gr_likes.text)
+
+        gr_brand = driver.find_element('xpath', '//*[contains(@class, "Designers_designer__")]')
+        print(gr_brand.text)
+        gr_sold_brands.append(gr_brand.text)
+
+        gr_pics = driver.find_elements('xpath', '//*[contains(@class, "Thumbnails_thumbnail__")]')
+        print(len(gr_pics))
+        gr_sold_num_of_pics.append(len(gr_pics))
+        gr_pic_url = []
+        for pics in gr_pics:
+            gr_pic_url.append(pics.get_attribute('src'))
+        print(gr_pic_url)
+        gr_sold_pic_urls.append(gr_pic_url)
+
+        gr_sold_url.append(driver.current_url)
+
+        brand_text = gr_brand + " "
+        breadcrumb_tags = driver.find_elements('xpath', '//*[starts-with(@class, "Link underline Breadcrumbs_link__")]')
+
+        gender_of_item = breadcrumb_tags[1].text
+        gender_text = gender_of_item.replace(brand_text, "")
+        print(gender_text)
+        gr_sold_mow.append(gender_text)
+    
+        gencat_of_item = breadcrumb_tags[2].text
+        gencat_text = gencat_of_item.replace(brand_text, "")
+        print(gencat_text)
+        gr_sold_gen_cat.append(gencat_text)
+
+        cat_of_item = breadcrumb_tags[3].text
+        cat_text = cat_of_item.replace(brand_text, "")
+        print('cat_text' + cat_text)
+        gr_sold_cat.append(cat_text)
+
+        gr_title = driver.find_element('xpath', '//*[contains(@class, "Text Details_title__")]')
+        print(gr_title)
+        gr_sold_titles.append(gr_title)
+
+    # for i in range(len(transcation_card)):
+    #     date_text = date_extraction[int((i[pic_i])) * 7].text
+    #     gr_sold_date.append(date_text)
+    #     pic_i += 1
+    #     time.sleep(3)
+
+gr_start_up()
+gr_solds()
