@@ -1,0 +1,219 @@
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import Select
+from selenium.webdriver.chrome.options import Options
+import time
+from text_parser import grailed_age_list, grailed_key_list, poshmark_category_list, grailed_condition_list, posh_size_list, grailed_color_list, price_lists, category_list, general_description
+from Testing import image_list
+from Extract_info_from_excel import excel_total_titles, excel_total_price
+
+#command to start selenium webdriver and open up the initial website
+chrome_options = Options()
+chrome_options.add_experimental_option("detach", True)
+driver = webdriver.Chrome("D:\\Selenium_python2\\chromedriver.exe", chrome_options=chrome_options)
+driver.get("https://poshmark.com/create-listing")
+time.sleep(2)
+
+count = 25
+pstart = count * 4 
+def adding_pics():
+    global pstart
+    current_images = 'folder2'
+    #this needs to change too
+    driver.find_element('xpath', '//*[@id="img-file-input"]').send_keys("D:\\Selenium_python2\\Pic_folder\\" + current_images +"\\" + str(image_list[pstart]))
+    time.sleep(2)
+    driver.find_element('xpath', '//*[@id="imagePlaceholder"]/div[2]/div[2]/div[2]/div/button[2]').click()
+    pstart += 1
+    time.sleep(1)
+    driver.find_element('xpath', '//*[@id="imagePlaceholder"]/div/div/label/div[2]/div[1]/div/label/input').send_keys("D:\\Selenium_python2\\Pic_folder\\" + current_images +"\\" + str(image_list[pstart]))
+    pstart += 1
+    driver.find_element('xpath', '//*[@id="imagePlaceholder"]/div/div/label/div[2]/div[2]/div/label/input').send_keys("D:\\Selenium_python2\\Pic_folder\\" + current_images +"\\" + str(image_list[pstart]))
+    pstart += 1
+    driver.find_element('xpath', '//*[@id="imagePlaceholder"]/div/div/label/div[2]/div[3]/div/label/input').send_keys("D:\\Selenium_python2\\Pic_folder\\" + current_images +"\\" + str(image_list[pstart]))
+    pstart += 1
+  
+def picking_category_item(cat, wmn_or_men):
+    #categories on this are much more specific, so maybe I can make another dicitonary with keywords from here, 
+    # they have options for all types of jackets, types of shirts, fits of Sweaters
+    if wmn_or_men == 'wmn':
+        cat_options = driver.find_elements('//*[@data-et-name="category_selection"]')
+        cat_options[1].click()
+    else:
+        cat_options[2].click()
+
+    if cat == 'Shirt':
+        driver.find_element('xpath', '//*[@id="content"]/div/div[1]/div[2]/section[3]/div/div[2]/div[1]/div/div[2]/div/ul[2]/li[6]/div').click()
+        driver.find_element('xpath', '//*[@id="content"]/div/div[1]/div[2]/section[3]/div/div[2]/div[2]/div/div[2]/ul/li[8]/a').click()
+    elif cat == 'Hoodie' or 'Sweatshirt':
+        driver.find_element('xpath', '//*[@id="content"]/div/div[1]/div[2]/section[3]/div/div[2]/div[1]/div/div[2]/div/ul[2]/li[6]/div').click()
+        driver.find_element('xpath', '//*[@id="content"]/div/div[1]/div[2]/section[3]/div/div[2]/div[2]/div/div[2]/ul/li[5]/a').click()
+    elif cat == 'Jacket':
+        driver.find_element('xpath', '//*[@id="content"]/div/div[1]/div[2]/section[3]/div/div[2]/div[1]/div/div[2]/div/ul[2]/li[3]/div').click()
+    elif cat == 'Sweater':
+        driver.find_element('xpath', '//*[@id="content"]/div/div[1]/div[2]/section[3]/div/div[2]/div[1]/div/div[2]/div/ul[2]/li[3]/div').click()
+
+def pick_size(size):
+    driver.find_element('xpath', '//*[@id="content"]/div/div[1]/div[2]/section[4]/div[2]/div[2]/div[1]/div/div[2]/div[1]/div').click()
+    
+    if size == '4XL':
+        driver.find_element('xpath', '//*[@id="content"]/div/div[1]/div[2]/section[4]/div[2]/div[2]/div[1]/div/div[2]/div[2]/div/nav/ul/li[2]/a/span').click()
+        driver.find_element('xpath', '//*[@id="size-4XL"]').click()
+    elif size == '5XL':
+        driver.find_element('xpath', '//*[@id="content"]/div/div[1]/div[2]/section[4]/div[2]/div[2]/div[1]/div/div[2]/div[2]/div/nav/ul/li[2]/a/span').click()
+        driver.find_element('xpath', '//*[@id="size-5XL"]').click()
+    elif size == '2XL':
+        driver.find_element('xpath', '//*[@id="content"]/div/div[1]/div[2]/section[4]/div[2]/div[2]/div[1]/div/div[2]/div[2]/div/nav/ul/li[2]/a/span').click()
+        driver.find_element('xpath', '//*[@id="size-XXL"]').click()
+    elif size == '3XL':
+        driver.find_element('xpath', '//*[@id="content"]/div/div[1]/div[2]/section[4]/div[2]/div[2]/div[1]/div/div[2]/div[2]/div/nav/ul/li[2]/a/span').click()
+        driver.find_element('xpath', '//*[@id="size-3XL"]').click()
+    elif size == 'S':
+        driver.find_element('xpath', '//*[@id="size-S"]').click()
+    elif size == 'M':
+        driver.find_element('xpath', '//*[@id="size-M"]').click()
+    elif size == 'XL':
+        driver.find_element('xpath', '//*[@id="size-XL"]').click()
+    elif size == 'XS':
+        driver.find_element('xpath' ,'//*[@id="size-XS"]').click()
+    elif size == 'L':
+        driver.find_element('xpath', '//*[@id="size-L"]').click()
+
+def nwt_or_not(nwt_used):
+    if nwt_used == 'New':
+        driver.find_element('xpath', '//*[@id="content"]/div/div[1]/div[2]/section[5]/div/div[2]/div[1]/button[2]').click()
+    else:
+        driver.find_element('xpath', '//*[@id="content"]/div/div[1]/div[2]/section[5]/div/div[2]/div[1]/button[1]').click()
+    
+def adding_color(color):
+    driver.find_element('xpath', '//*[@id="content"]/div/div[1]/div[2]/section[7]/div/div[2]/div/div[1]/div/div').click()
+    if color == 'Red':
+        driver.find_element('xpath' ,'//*[@id="content"]/div/div[1]/div[2]/section[7]/div/div[2]/div/div[2]/div/ul/li[1]/div/a').click()
+    elif color == 'Pink':
+        driver.find_element('xpath' ,'//*[@id="content"]/div/div[1]/div[2]/section[7]/div/div[2]/div/div[2]/div/ul/li[2]/div/a').click()
+    elif color == 'Orange':
+        driver.find_element('xpath' ,'//*[@id="content"]/div/div[1]/div[2]/section[7]/div/div[2]/div/div[2]/div/ul/li[3]/div/a').click()
+    elif color == 'Yellow':
+        driver.find_element('xpath' ,'//*[@id="content"]/div/div[1]/div[2]/section[7]/div/div[2]/div/div[2]/div/ul/li[4]/div').click()
+    elif color == 'Green':
+        driver.find_element('xpath' ,'//*[@id="content"]/div/div[1]/div[2]/section[7]/div/div[2]/div/div[2]/div/ul/li[5]/div/a').click()
+    elif color == 'Blue':
+        driver.find_element('xpath' ,'//*[@id="content"]/div/div[1]/div[2]/section[7]/div/div[2]/div/div[2]/div/ul/li[6]/div/a').click()
+    elif color == 'Purple':
+        driver.find_element('xpath' ,'//*[@id="content"]/div/div[1]/div[2]/section[7]/div/div[2]/div/div[2]/div/ul/li[7]/div/a').click()
+    elif color == 'Gold':
+        driver.find_element('xpath' ,'//*[@id="content"]/div/div[1]/div[2]/section[7]/div/div[2]/div/div[2]/div/ul/li[8]/div/a').click()
+    elif color == 'Silver':
+        driver.find_element('xpath' ,'//*[@id="content"]/div/div[1]/div[2]/section[7]/div/div[2]/div/div[2]/div/ul/li[9]/div/a').click()
+    elif color == 'Black':
+        driver.find_element('xpath' ,'//*[@id="content"]/div/div[1]/div[2]/section[7]/div/div[2]/div/div[2]/div/ul/li[10]/div/a').click()
+    elif color == 'Gray':
+        driver.find_element('xpath' ,'//*[@id="content"]/div/div[1]/div[2]/section[7]/div/div[2]/div/div[2]/div/ul/li[11]/div/a').click()
+    elif color == 'White':
+        driver.find_element('xpath' ,'//*[@id="content"]/div/div[1]/div[2]/section[7]/div/div[2]/div/div[2]/div/ul/li[12]/div/a').click()
+    elif color == 'Cream':
+        driver.find_element('xpath' ,'//*[@id="content"]/div/div[1]/div[2]/section[7]/div/div[2]/div/div[2]/div/ul/li[13]/div/a').click()
+    elif color == 'Brown':
+        driver.find_element('xpath' ,'//*[@id="content"]/div/div[1]/div[2]/section[7]/div/div[2]/div/div[2]/div/ul/li[14]/div/a').click()
+    elif color == 'Tan':
+        driver.find_element('xpath' ,'//*[@id="content"]/div/div[1]/div[2]/section[7]/div/div[2]/div/div[2]/div/ul/li[15]/div/a').click()
+
+def checking_all_match():
+    if len(excel_total_titles) == len(poshmark_category_list) and len(grailed_key_list) and len(grailed_condition_list) and len(posh_size_list) and len(price_lists):
+        print('This shit all good')
+        print(len(excel_total_titles))
+        print('this the max count')
+
+    else:
+        print('Fix your shit')
+        print('grailed_category_list ' + str(len(poshmark_category_list)))
+        print('grailed_key_list ' + str(len(grailed_key_list)))
+        print('grailed_condition_list ' + str(len(grailed_condition_list)))
+        print('posh size list ' + str(len(posh_size_list)))
+        print('price_lists ' + str(len(price_lists)))
+        print('excel total titles ' + str(len(excel_total_titles)))
+
+def start_up():
+# logging in
+    #enter email and password
+    driver.find_element('xpath', '//*[@id="login_form_username_email"]').send_keys('argelarroyo2001@gmail.com')
+    driver.find_element('xpath', '//*[@id="login_form_password"]').send_keys('Fernanda*123')
+    time.sleep(3)
+    # just incase theres a robot passing test i have to manually do
+    #press login button
+    driver.find_element('xpath', '//*[@id="email-login-form"]/form/div[3]/button').click()
+    time.sleep(20)
+
+def poshmark_poster():
+    global count
+    print('Startin Poshmark Poster')
+    checking_all_match()
+    start_up()
+    for titles in excel_total_titles:
+        
+        adding_pics()
+
+        #title enter
+        driver.find_element('xpath', '//*[@id="content"]/div/div[1]/div[2]/section[2]/div[1]/div[2]/div/div[1]/div/div/input').send_keys(excel_total_titles[count])
+        print(excel_total_titles[count])
+        #description  general_description
+        time.sleep(1)
+        driver.find_element('xpath', '//*[@id="content"]/div/div[1]/div[2]/section[2]/div[2]/div[2]/textarea').send_keys(general_description)
+        
+        #picking category
+        time.sleep(1)
+        #this click on category and selects MEN
+        driver.find_element('xpath', '//*[@id="content"]/div/div[1]/div[2]/section[3]/div/div[2]/div[1]/div/div[1]/div').click()
+        driver.find_element('xpath', '//*[@id="content"]/div/div[1]/div[2]/section[3]/div/div[2]/div[1]/div/div[2]/div/ul/li[3]/a').click()
+        
+        #and subcategory
+        picking_category_item(poshmark_category_list[count])
+
+        #picking size
+        time.sleep(1)
+        pick_size(posh_size_list[count])
+
+
+        # #clicking subcategory
+        #need to create a more specific dictionary for this in text_parser
+        # driver.find_element('xpath', '//*[@id="content"]/div/div[1]/div[2]/section[6]/div/div[2]/div[1]/div[1]/div/input').send_keys()
+        
+        time.sleep(1)
+        #adding brand
+        driver.find_element('xpath', '//*[@id="content"]/div/div[1]/div[2]/section[6]/div/div[2]/div[1]/div[1]/div/input').send_keys(grailed_key_list[count])
+
+        bottom_of_page = driver.find_element('xpath', '//*[@id="content"]/div/div[1]/div[2]/div[2]/button')
+        driver.execute_script("arguments[0].scrollIntoView(true)", bottom_of_page)
+
+        # nwt_or_not(grailed_condition_list[count])
+        # #add color
+        # adding_color(grailed_color_list)
+
+        #add tags
+        driver.find_element('xpath', '//*[@id="content"]/div/div[1]/div[2]/section[8]/div/div[2]/div/div[1]/div/div/input').click()
+        driver.find_element('xpath', '//*[@id="content"]/div/div[1]/div[2]/section[8]/div/div[2]/div/div[2]/ul/li[58]/div/div').click()
+        # driver.find_element('xpath', '//*[@id="content"]/div/div[1]/div[2]/section[8]/div/div[2]/div/div[1]/div/div/input').click()
+        driver.find_element('xpath', '//*[@id="content"]/div/div[1]/div[2]/section[8]/div/div[2]/div/div[2]/ul/li[10]/div/div').click()
+        # driver.find_element('xpath', '//*[@id="content"]/div/div[1]/div[2]/section[8]/div/div[2]/div/div[1]/div/div/input').click()
+        driver.find_element('xpath', '/html/body/div[1]/main/div[2]/div/div[1]/div[2]/section[8]/div/div[2]/div/div[2]/ul/li[1]/div/div').click()
+
+        #add price original and listing
+       
+        driver.find_element('xpath', '//*[@id="content"]/div/div[1]/div[2]/section[9]/div/div/div[2]/input').send_keys(int(excel_total_price[count]) * 1.5)
+        driver.find_element('xpath', '//*[@id="content"]/div/div[1]/div[2]/section[9]/div/div/div[2]/div[3]/input').send_keys(excel_total_price[count])
+        
+        # click next listing/
+        driver.find_element('xpath', '//*[@id="content"]/div/div[1]/div[2]/div[2]/button').click()
+        driver.find_element('xpath', '//*[@id="content"]/div/div[1]/div[2]/div[3]/div[2]/div[2]/div[2]/button').click()
+        time.sleep(6)
+        driver.find_element('xpath', '//*[@id="app"]/header/nav[2]/div[1]/ul[2]/li[2]/a/span').click()
+        time.sleep(6)
+        print('finished ' + str(count))
+        count += 1
+        print('start ' + str(count))
+
+
+poshmark_poster()
+
+#too much xpath stuff here, adjust it so that it uses classes and data-testid and stuff, maybe tmrw, shit man I have so much shit to do now, I feel overwhelmed, but I got this
+# I'm great with pressure so this will push me to perform my best, I have no time to waste, everything has to have a purpose, no fucking pewdiepie cause im bored
+# you should never be bored, theres always something to do.
